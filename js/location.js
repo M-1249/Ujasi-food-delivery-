@@ -1,5 +1,5 @@
 /* =====================================================
-   LOCATION.JS — Chombo cha BURE cha eneo (hakihitaji funguo
+   0LOCATION.JS — Chombo cha BURE cha eneo (hakihitaji funguo
    ya API wala malipo):
    - Utafutaji wa mahali: Nominatim (OpenStreetMap) — bure.
      Heshimu matumizi ya haki: si zaidi ya ombi 1 kwa sekunde,
