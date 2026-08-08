@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Menyu — Mgahawa | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_restaurant_session")){
+    window.location.replace("login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .menu-row{ display:flex; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); align-items:center; }
+  .menu-row img{ width:60px; height:60px; border-radius: var(--r-md); object-fit:cover; flex:none; background:var(--surface); }
+  .menu-row .mname{ font-size:14px; font-weight:600; }
+  .menu-row .mprice{ font-family: var(--font-mono); font-size:12.5px; color: var(--primary-dark); font-weight:700; }
+  .menu-row .mactions{ display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+  .mini-btn{ background:none; border:none; font-size:12px; color: var(--primary); font-weight:700; cursor:pointer; padding:2px; }
+  .mini-btn.danger{ color: var(--alert); }
+
+  .modal-bg{
+    display:none; position:fixed; inset:0; background:rgba(11,43,38,.45); z-index:80;
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-bg.show{ display:flex; }
+  .modal-sheet{
+    background:#fff; width:100%; max-width:480px; border-radius: 22px 22px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom)); animation: reveal-up .3s cubic-bezier(.16,.8,.24,1) both;
+    max-height:88vh; overflow-y:auto;
+  }
+  .fab-add{
+    position:fixed; bottom:96px; left:50%; transform:translateX(calc(-50% + 190px));
+    width:52px; height:52px; border-radius:50%; background: var(--accent); color:#3A2200;
+    border:none; font-size:24px; box-shadow: var(--shadow-2); z-index:55; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Menyu ya Mgahawa</div>
+  </div>
+
+  <div class="container" style="padding-bottom:6px;">
+    <p class="muted">Simamia vyakula vyako — ongeza vipya, badilisha bei, au ficha ambavyo havipatikani kwa sasa.</p>
+  </div>
+
+  <div id="menuList" class="stagger"></div>
+
+</div>
+
+<button class="fab-add" onclick="openModal()">+</button>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="orders.html"><span class="ic">🧾</span>Oda</a>
+  <a href="menu.html" class="active"><span class="ic">🍽️</span>Menyu</a>
+  <a href="profile.html"><span class="ic">🏪</span>Profaili</a>
+</div>
+
+<!-- Modal ya kuongeza/kuhariri chakula -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal-sheet">
+    <h3 id="modalTitle" style="font-size:16px;">Ongeza Chakula</h3>
+    <input type="hidden" id="foodId">
+    <div class="field">
+      <label>Jina la Chakula</label>
+      <input type="text" id="fName" placeholder="Mfano: Wali wa Nazi na Kuku">
+    </div>
+    <div class="field">
+      <label>Bei (TSh)</label>
+      <input type="number" id="fPrice" placeholder="6500">
+    </div>
+    <div class="field">
+      <label>Maelezo Mafupi</label>
+      <textarea id="fDesc" rows="2" placeholder="Maelezo mafupi ya chakula"></textarea>
+    </div>
+    <div class="field">
+      <label>Kiungo cha Picha (URL)</label>
+      <input type="text" id="fPhoto" placeholder="https://...">
+    </div>
+    <div class="row gap-12" style="margin-top:6px;">
+      <button class="btn btn-outline btn-block" onclick="closeModal()">Ghairi</button>
+      <button class="btn btn-primary btn-block" onclick="saveFoodForm()">Hifadhi</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/restaurant-admin.js"></script>
+<script>
+function renderMenu(){
+  const menu = getMenu();
+  const wrap = document.getElementById("menuList");
+  if(menu.length === 0){
+    wrap.innerHTML = `<div class="empty"><div class="ic">🍽️</div>Bado hujaongeza chakula chochote</div>`;
+    return;
+  }
+  wrap.innerHTML = menu.map(f => `
+    <div class="menu-row" style="${f.available ? '' : 'opacity:.5;'}">
+      <img src="${f.photo || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200'}" alt="${f.name}">
+      <div style="flex:1;">
+        <div class="mname">${f.name}</div>
+        <div class="mprice">${formatTZS(f.price)}</div>
+        <div class="muted" style="font-size:11px;">${f.available ? "Inapatikana" : "Imefichwa"}</div>
+      </div>
+      <div class="mactions">
+        <button class="mini-btn" onclick="editFood('${f.id}')">Hariri</button>
+        <button class="mini-btn" onclick="toggleAvail('${f.id}')">${f.available ? "Ficha" : "Onyesha"}</button>
+        <button class="mini-btn danger" onclick="removeFood('${f.id}')">Futa</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openModal(){
+  document.getElementById("modalTitle").textContent = "Ongeza Chakula";
+  document.getElementById("foodId").value = "";
+  document.getElementById("fName").value = "";
+  document.getElementById("fPrice").value = "";
+  document.getElementById("fDesc").value = "";
+  document.getElementById("fPhoto").value = "";
+  document.getElementById("modalBg").classList.add("show");
+}
+function closeModal(){ document.getElementById("modalBg").classList.remove("show"); }
+
+function editFood(id){
+  const item = getMenu().find(m => m.id === id);
+  if(!item) return;
+  document.getElementById("modalTitle").textContent = "Hariri Chakula";
+  document.getElementById("foodId").value = item.id;
+  document.getElementById("fName").value = item.name;
+  document.getElementById("fPrice").value = item.price;
+  document.getElementById("fDesc").value = item.desc || "";
+  document.getElementById("fPhoto").value = item.photo || "";
+  document.getElementById("modalBg").classList.add("show");
+}
+
+function saveFoodForm(){
+  const id = document.getElementById("foodId").value;
+  const name = document.getElementById("fName").value.trim();
+  const price = Number(document.getElementById("fPrice").value);
+  const desc = document.getElementById("fDesc").value.trim();
+  const photo = document.getElementById("fPhoto").value.trim();
+
+  if(!name || !price){
+    showToast("Weka jina na bei ya chakula", "error");
+    return;
+  }
+
+  if(id){
+    updateMenuItem(id, { name, price, desc, photo });
+    showToast("Chakula kimesasishwa", "success");
+  } else {
+    addMenuItem({ name, price, desc, photo });
+    showToast("Chakula kimeongezwa", "success");
+  }
+  closeModal();
+  renderMenu();
+}
+
+function toggleAvail(id){
+  toggleMenuAvailability(id);
+  renderMenu();
+}
+function removeFood(id){
+  if(!confirm("Una uhakika unataka kufuta chakula hiki?")) return;
+  deleteMenuItem(id);
+  renderMenu();
+  showToast("Chakula kimefutwa", "success");
+}
+
+renderMenu();
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kikapu — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  body{ padding-bottom:110px; }
+  .cart-item{ display:flex; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); align-items:center; }
+  .cart-item img{ width:64px; height:64px; border-radius: var(--r-md); object-fit:cover; }
+  .cart-item .cname{ font-size:14px; font-weight:600; }
+  .cart-item .crest{ font-size:11.5px; color:var(--ink-soft); margin-bottom:4px; }
+  .cart-item .cprice{ font-family: var(--font-mono); font-weight:700; font-size:13px; color: var(--primary-dark); }
+  .stepper{ display:flex; align-items:center; gap:8px; }
+  .stepper button{ width:26px; height:26px; border-radius:50%; border:1.5px solid var(--primary); background:#fff; color:var(--primary); font-weight:700; cursor:pointer; }
+  .stepper span{ min-width:16px; text-align:center; font-weight:700; font-size:13px; }
+  .summary-card{ margin:18px; }
+  .summary-row{ display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:8px; color: var(--ink-soft); }
+  .summary-row.total{ color: var(--ink); font-weight:700; font-size:15px; padding-top:10px; border-top:1px dashed var(--line); }
+  .checkout-bar{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px;
+    background:#fff; border-top:1px solid var(--line); padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <button class="back" onclick="history.back()">←</button>
+    <h2 style="font-size:16px; margin:0;">Kikapu Changu</h2>
+  </div>
+
+  <div id="cartItems"></div>
+
+  <div class="summary-card card" id="summaryCard" style="display:none;">
+    <div class="summary-row"><span>Jumla ndogo</span><span id="sumSubtotal"></span></div>
+    <div class="summary-row"><span>Ada ya Usafirishaji</span><span id="sumDelivery"></span></div>
+    <div class="summary-row total"><span>Jumla ya Malipo</span><span id="sumTotal"></span></div>
+  </div>
+
+  <div class="empty" id="emptyState" style="display:none;">
+    <div class="ic">🛒</div>
+    Kikapu chako kipo tupu
+    <div style="margin-top:14px;">
+      <a href="home.html" class="btn btn-primary">Anza Kuagiza</a>
+    </div>
+  </div>
+</div>
+
+<div class="checkout-bar" id="checkoutBar" style="display:none;">
+  <a href="checkout.html" class="btn btn-primary btn-block row between" style="padding:16px 20px;">
+    <span id="checkoutTotal"></span>
+    <span>Endelea kulipa →</span>
+  </a>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/data.js"></script>
+<script>
+function deliveryFeeForCart(){
+  const cart = getCart();
+  if(cart.length === 0) return 0;
+  // Ada ya usafirishaji inatokana na mgahawa wa kwanza kwenye kikapu (demo)
+  const r = findAnyRestaurant(cart[0].restaurantId);
+  return r ? r.deliveryFee : 2000;
+}
+
+function renderCartPage(){
+  const cart = getCart();
+  const list = document.getElementById("cartItems");
+  const empty = document.getElementById("emptyState");
+  const summary = document.getElementById("summaryCard");
+  const bar = document.getElementById("checkoutBar");
+
+  if(cart.length === 0){
+    list.innerHTML = "";
+    summary.style.display = "none";
+    bar.style.display = "none";
+    empty.style.display = "block";
+    return;
+  }
+
+  empty.style.display = "none";
+  summary.style.display = "block";
+  bar.style.display = "block";
+
+  list.innerHTML = cart.map(c => `
+    <div class="cart-item">
+      <img src="${c.photo}" alt="${c.name}">
+      <div style="flex:1;">
+        <div class="crest">${c.restaurantName}</div>
+        <div class="cname">${c.name}</div>
+        <div class="cprice">${formatTZS(c.price)}</div>
+      </div>
+      <div class="stepper">
+        <button onclick="changeCartQty('${c.id}', -1)">−</button>
+        <span>${c.qty}</span>
+        <button onclick="changeCartQty('${c.id}', 1)">+</button>
+      </div>
+    </div>
+  `).join("");
+
+  const subtotal = cartSubtotal();
+  const fee = deliveryFeeForCart();
+  const total = subtotal + fee;
+
+  document.getElementById("sumSubtotal").textContent = formatTZS(subtotal);
+  document.getElementById("sumDelivery").textContent = formatTZS(fee);
+  document.getElementById("sumTotal").textContent = formatTZS(total);
+  document.getElementById("checkoutTotal").textContent = formatTZS(total);
+}
+
+function changeCartQty(id, delta){
+  const item = getCart().find(c => c.id === id);
+  if(!item) return;
+  setCartQty(id, item.qty + delta);
+  renderCartPage();
+}
+
+renderCartPage();
+</script>
+</body>
+</html>

@@ -3,8 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>UJASI Food Delivery — Chakula Kinachokufikia</title>
+<title>UJASI Food Delivery — Agiza Chakula na Maji, Dodoma Tanzania</title>
+<meta name="description" content="UJASI Food Delivery — agiza chakula na maji safi ya kunywa Dodoma, Tanzania. Lipa kwa Lipa Namba (M-Pesa, Tigo, Airtel, HaloPesa, T-Pesa). Delivery ya haraka na ya kuaminika.">
+<meta name="keywords" content="food delivery Dodoma, UJASI, chakula Tanzania, maji delivery, Lipa Namba, order food Dodoma">
+<link rel="canonical" href="https://ujasi-food-delivery.vercel.app/index.html">
+
+<!-- Open Graph (WhatsApp, Facebook, LinkedIn preview) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="UJASI Food Delivery — Dodoma, Tanzania">
+<meta property="og:description" content="Agiza chakula na maji safi ya kunywa Dodoma. Lipa kwa Lipa Namba. Delivery ya haraka.">
+<meta property="og:image" content="https://ujasi-food-delivery.vercel.app/icons/icon-512.png">
+<meta property="og:url" content="https://ujasi-food-delivery.vercel.app/index.html">
+<meta property="og:locale" content="sw_TZ">
+
+<!-- Twitter/X Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="UJASI Food Delivery — Dodoma, Tanzania">
+<meta name="twitter:description" content="Agiza chakula na maji safi ya kunywa Dodoma. Lipa kwa Lipa Namba.">
+<meta name="twitter:image" content="https://ujasi-food-delivery.vercel.app/icons/icon-512.png">
+
 <meta name="theme-color" content="#0C6B58">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FoodEstablishment",
+  "name": "UJASI Food Delivery",
+  "description": "Huduma ya kuagiza chakula na maji safi ya kunywa Dodoma, Tanzania.",
+  "url": "https://ujasi-food-delivery.vercel.app/index.html",
+  "image": "https://ujasi-food-delivery.vercel.app/icons/icon-512.png",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Dodoma",
+    "addressCountry": "TZ"
+  },
+  "servesCuisine": "Kienyeji, Kuku, Nyama Choma, Samaki",
+  "priceRange": "TSh"
+}
+</script>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/global.css">
@@ -85,7 +126,22 @@
   </div>
 
   <div class="splash-cta reveal" style="animation-delay:.2s">
+
+    <button class="install-banner" data-install-btn onclick="triggerInstall()">
+      <span class="install-icon">📲</span>
+      <span class="install-text">
+        <span class="install-title">Install App</span>
+        <span class="install-sub">Sakinisha UJASI kwenye simu yako — bure</span>
+      </span>
+      <span class="install-arrow">→</span>
+    </button>
+
     <a href="customer/home.html" class="btn btn-primary btn-block">Endelea Bila Akaunti →</a>
+
+    <div class="row gap-8" style="margin-top:2px;">
+      <button class="btn btn-outline btn-block" onclick="shareApp()">🔗 Shiriki Kiungo</button>
+    </div>
+
     <a href="auth/register.html" class="btn btn-outline btn-block">Jisajili (hiari)</a>
     <p style="text-align:center;" class="muted">
       Una akaunti tayari? <a href="auth/login.html" style="font-weight:700;">Ingia</a>
@@ -94,6 +150,25 @@
   </div>
 
 </div>
+
+<style>
+  .install-banner{
+    display:flex; align-items:center; gap:12px; width:100%;
+    background: linear-gradient(120deg, var(--accent) 0%, var(--accent-dark) 100%);
+    border:none; border-radius: var(--r-lg); padding:14px 16px; margin-bottom:12px;
+    cursor:pointer; box-shadow: var(--shadow-2);
+    animation: install-pulse 2.2s ease-in-out infinite;
+  }
+  .install-icon{ font-size:26px; flex:none; }
+  .install-text{ flex:1; text-align:left; display:flex; flex-direction:column; }
+  .install-title{ font-family: var(--font-display); font-weight:700; font-size:16px; color:#3A2200; letter-spacing:.01em; }
+  .install-sub{ font-size:11.5px; color:#3A2200; opacity:.85; }
+  .install-arrow{ font-size:18px; color:#3A2200; font-weight:700; }
+  @keyframes install-pulse{
+    0%, 100%{ box-shadow: var(--shadow-2); }
+    50%{ box-shadow: 0 8px 24px rgba(255,159,28,.45); }
+  }
+</style>
 
 <script src="js/app.js"></script>
 </body>

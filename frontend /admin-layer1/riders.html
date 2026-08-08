@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Riders — Admin Layer 1 | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_admin1_session")){
+    window.location.replace("login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .rider-row{ display:flex; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); align-items:center; }
+  .rider-row .rlogo{ width:44px; height:44px; border-radius:50%; background:var(--primary-tint); color:var(--primary-dark); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; flex:none; }
+  .rider-row .rname{ font-weight:700; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Riders Wote</div>
+  </div>
+
+  <div class="container" style="padding-bottom:6px;">
+    <p class="muted">Riders waliosajiliwa (imesomwa kutoka profaili walizoweka kwenye Rider Panel).</p>
+  </div>
+
+  <div id="riderList" class="stagger"></div>
+
+</div>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="orders.html"><span class="ic">🧾</span>Dispatch</a>
+  <a href="restaurants.html"><span class="ic">🏪</span>Migahawa</a>
+  <a href="riders.html" class="active"><span class="ic">🏍️</span>Riders</a>
+  <a href="settings.html"><span class="ic">⚙️</span>Mipangilio</a>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/admin-layer1.js"></script>
+<script>
+function render(){
+  const list = getAllRiderProfiles();
+  const wrap = document.getElementById("riderList");
+  if(list.length === 0){
+    wrap.innerHTML = `<div class="empty"><div class="ic">🏍️</div>Bado hakuna rider aliyesajiliwa</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(r => `
+    <div class="rider-row">
+      <div class="rlogo">${r.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
+      <div style="flex:1;">
+        <div class="rname">${r.name}</div>
+        <div class="muted">${r.vehicle} · ${r.plate || "—"} · ⭐ ${r.rating}</div>
+      </div>
+      <span class="badge ${r.online ? 'badge-success' : 'badge-alert'}">${r.online ? 'Mtandaoni' : 'Nje ya Mtandao'}</span>
+    </div>
+  `).join("");
+}
+render();
+</script>
+</body>
+</html>

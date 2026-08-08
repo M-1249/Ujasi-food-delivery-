@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Profaili — Rider | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_rider_session")){
+    window.location.replace("login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Profaili ya Rider</div>
+  </div>
+
+  <div class="container reveal">
+    <div class="card" style="text-align:center; margin-bottom:18px;">
+      <div style="width:64px; height:64px; border-radius:50%; background:var(--primary-tint); color:var(--primary-dark); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:22px; font-weight:700; margin:0 auto 10px;" id="initials">JR</div>
+      <div style="font-weight:700; font-size:16px;" id="nameDisplay">Rider</div>
+      <div class="muted" id="vehicleDisplay">Pikipiki</div>
+      <div style="margin-top:8px;">⭐ <span id="ratingDisplay">4.8</span></div>
+    </div>
+
+    <div class="field">
+      <label>Jina Kamili</label>
+      <input type="text" id="pName">
+    </div>
+    <div class="field">
+      <label>Namba ya Simu</label>
+      <input type="tel" id="pPhone">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Aina ya Chombo</label>
+        <select id="pVehicle">
+          <option>Pikipiki</option><option>Baiskeli</option><option>Gari</option><option>Kwa Miguu</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Namba ya Bango</label>
+        <input type="text" id="pPlate" placeholder="T 123 ABC">
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="saveBtn">Hifadhi Mabadiliko</button>
+
+    <div class="hr"></div>
+    <a href="login.html" class="btn btn-outline btn-block" id="logoutBtn">Toka Paneli ya Rider</a>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="deliveries.html"><span class="ic">📦</span>Oda</a>
+  <a href="profile.html" class="active"><span class="ic">🏍️</span>Profaili</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/rider.js"></script>
+<script>
+function loadProfile(){
+  const p = getRiderProfile();
+  document.getElementById("nameDisplay").textContent = p.name;
+  document.getElementById("vehicleDisplay").textContent = p.vehicle;
+  document.getElementById("ratingDisplay").textContent = p.rating;
+  document.getElementById("initials").textContent = p.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  document.getElementById("pName").value = p.name;
+  document.getElementById("pPhone").value = p.phone;
+  document.getElementById("pVehicle").value = p.vehicle;
+  document.getElementById("pPlate").value = p.plate;
+}
+
+document.getElementById("saveBtn").addEventListener("click", function(){
+  const p = getRiderProfile();
+  p.name = document.getElementById("pName").value.trim() || p.name;
+  p.phone = document.getElementById("pPhone").value.trim() || p.phone;
+  p.vehicle = document.getElementById("pVehicle").value;
+  p.plate = document.getElementById("pPlate").value.trim();
+  saveRiderProfile(p);
+  loadProfile();
+  showToast("Profaili ya rider imesasishwa", "success");
+});
+
+document.getElementById("logoutBtn").addEventListener("click", function(e){
+  e.preventDefault();
+  firebase.auth().signOut().finally(() => {
+    localStorage.removeItem("ujasi_rider_session");
+    window.location.href = "login.html";
+  });
+});
+
+loadProfile();
+</script>
+</body>
+</html>

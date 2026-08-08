@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Oda — Mgahawa | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_restaurant_session")){
+    window.location.replace("login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .filter-scroll{ display:flex; gap:8px; overflow-x:auto; padding:14px 18px; scrollbar-width:none; }
+  .filter-scroll::-webkit-scrollbar{ display:none; }
+  .order-card{ margin:0 18px 14px; }
+  .order-card .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .order-card .items{ font-size:12.5px; color: var(--ink-soft); margin-bottom:10px; }
+  .action-row{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .detail-link{ font-size:12px; font-weight:700; color:var(--primary); background:none; border:none; cursor:pointer; padding:0; margin-top:8px; }
+
+  .modal-bg{
+    display:none; position:fixed; inset:0; background:rgba(11,43,38,.45); z-index:80;
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-bg.show{ display:flex; }
+  .modal-sheet{
+    background:#fff; width:100%; max-width:480px; border-radius: 22px 22px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom)); animation: reveal-up .3s cubic-bezier(.16,.8,.24,1) both;
+    max-height:88vh; overflow-y:auto;
+  }
+  .detail-row{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px; }
+  .detail-row:last-child{ border-bottom:none; }
+  .detail-row .dlabel{ color:var(--ink-soft); }
+  .detail-row .dval{ font-weight:600; text-align:right; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Oda za Mgahawa</div>
+  </div>
+
+  <div class="filter-scroll reveal" id="filterScroll"></div>
+
+  <div id="ordersList" class="stagger"></div>
+
+</div>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="orders.html" class="active"><span class="ic">🧾</span>Oda</a>
+  <a href="menu.html"><span class="ic">🍽️</span>Menyu</a>
+  <a href="profile.html"><span class="ic">🏪</span>Profaili</a>
+</div>
+
+<!-- Modal ya Taarifa Kamili za Oda (mteja, malipo, ujumbe kwa mteja) -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal-sheet">
+    <h3 style="font-size:16px;">Taarifa Kamili za Oda</h3>
+    <input type="hidden" id="detailOrderCode">
+    <div id="detailBody"></div>
+
+    <div class="section-title" style="margin-top:16px;"><h2 style="font-size:13px;">Ujumbe kwa Mteja</h2></div>
+    <p class="muted" style="margin-top:-4px;">Ujumbe huu utaonekana kwa mteja kwenye ukurasa wa kufuatilia oda.</p>
+    <div class="field">
+      <textarea id="adminNoteInput" rows="3" placeholder="Mfano: Chakula chako kinaandaliwa, kitafika ndani ya dakika 30"></textarea>
+    </div>
+    <div class="row gap-12">
+      <button class="btn btn-outline btn-block" onclick="closeDetailModal()">Funga</button>
+      <button class="btn btn-primary btn-block" onclick="saveAdminNote()">Tuma Ujumbe</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/restaurant-admin.js"></script>
+<script>
+const FILTERS = [
+  { key: "zote", label: "Zote" },
+  { key: "pending_verification", label: "Zinasubiri" },
+  { key: "payment_confirmed", label: "Malipo Sahihi" },
+  { key: "preparing", label: "Zinaandaliwa" },
+  { key: "ready_for_pickup", label: "Tayari" },
+  { key: "delivered", label: "Zimekamilika" }
+];
+let activeFilter = "zote";
+
+function statusLabel(s){
+  const map = { pending_verification:"Inasubiri Uthibitisho", payment_confirmed:"Malipo Sahihi", preparing:"Inaandaliwa", ready_for_pickup:"Tayari Kuchukuliwa", on_the_way:"Njiani", delivered:"Imefika", cancelled:"Imeghairiwa" };
+  return map[s] || s;
+}
+function statusBadgeClass(s){
+  if(s === "delivered") return "badge-success";
+  if(s === "cancelled") return "badge-alert";
+  if(s === "pending_verification") return "badge-warn";
+  return "badge-primary";
+}
+
+function renderFilters(){
+  document.getElementById("filterScroll").innerHTML = FILTERS.map(f =>
+    `<div class="cat-chip ${f.key===activeFilter?'active':''}" onclick="selectFilter('${f.key}')">${f.label}</div>`
+  ).join("");
+}
+function selectFilter(key){
+  activeFilter = key;
+  renderFilters();
+  renderOrders();
+}
+
+function nextActionButton(order){
+  switch(order.status){
+    case "pending_verification":
+      return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','payment_confirmed')">✔ Thibitisha Malipo</button>
+              <button class="btn btn-outline btn-sm" onclick="cancelOrder('${order.orderCode}')">✕ Kataa</button>`;
+    case "payment_confirmed":
+      return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','preparing')">👨‍🍳 Anza Kuandaa</button>`;
+    case "preparing":
+      return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','ready_for_pickup')">📦 Tayari Kuchukuliwa</button>`;
+    case "ready_for_pickup":
+      return `<span class="badge badge-primary">Inasubiri Rider</span>`;
+    case "on_the_way":
+      return `<span class="badge badge-primary">Rider Ameshachukua</span>`;
+    case "delivered":
+      return `<span class="badge badge-success">Imekamilika</span>`;
+    case "cancelled":
+      return `<span class="badge badge-alert">Imeghairiwa</span>`;
+    default: return "";
+  }
+}
+
+function renderOrders(){
+  const list = getRestaurantOrdersByStatus(activeFilter === "zote" ? null : activeFilter)
+    .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const wrap = document.getElementById("ordersList");
+
+  if(list.length === 0){
+    wrap.innerHTML = `<div class="empty"><div class="ic">🧾</div>Hakuna oda kwenye kundi hili</div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(o => `
+    <div class="card order-card">
+      <div class="top">
+        <span style="font-family:var(--font-mono); font-weight:700; font-size:13.5px;">${o.orderCode}</span>
+        <span class="badge ${statusBadgeClass(o.status)}">${statusLabel(o.status)}</span>
+      </div>
+      <div class="items">
+        ${o.items.filter(i => i.restaurantId === getCurrentRestaurantId()).map(i => `${i.qty}× ${i.name}`).join(", ")}
+      </div>
+      <div class="row between">
+        <span class="muted">${o.customerName || "Mteja"} · ${new Date(o.createdAt).toLocaleTimeString("sw-TZ",{hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="font-weight:700; font-family:var(--font-mono);">${formatTZS(o.total)}</span>
+      </div>
+      ${o.txnId ? `<div class="muted" style="margin-top:4px;">Muamala: <b>${o.txnId}</b></div>` : ""}
+      ${o.deliveryAddress ? `
+        <div class="muted" style="margin-top:4px;">
+          📍 ${o.deliveryAddress.details}
+          ${o.deliveryAddress.lat ? `· <a href="https://www.google.com/maps?q=${o.deliveryAddress.lat},${o.deliveryAddress.lng}" target="_blank" style="font-weight:700;">Ramani →</a>` : ""}
+        </div>` : ""}
+      ${o.adminNote ? `<div class="muted" style="margin-top:4px; background:var(--primary-tint); padding:6px 8px; border-radius:6px;">💬 Ujumbe wako: ${o.adminNote}</div>` : ""}
+      <button class="detail-link" onclick="openDetailModal('${o.orderCode}')">📋 Taarifa Kamili za Mteja/Malipo →</button>
+      <div class="action-row">${nextActionButton(o)}</div>
+    </div>
+  `).join("");
+}
+
+function advanceOrder(code, status){
+  updateOrderStatus(code, status);
+  showToast("Hali ya oda imesasishwa", "success");
+  renderOrders();
+}
+function cancelOrder(code){
+  if(!confirm("Una uhakika unataka kughairi oda hii?")) return;
+  updateOrderStatus(code, "cancelled");
+  showToast("Oda imeghairiwa", "success");
+  renderOrders();
+}
+
+const netMap = { vodacom:"M-Pesa (Vodacom)", tigo:"Mixx by Yas (Tigo)", airtel:"Airtel Money", halotel:"HaloPesa", ttcl:"T-Pesa (TTCL)" };
+
+function openDetailModal(code){
+  const order = getOrders().find(o => o.orderCode === code);
+  if(!order) return;
+  document.getElementById("detailOrderCode").value = code;
+
+  const addr = order.deliveryAddress;
+  document.getElementById("detailBody").innerHTML = `
+    <div class="detail-row"><span class="dlabel">Jina la Mteja</span><span class="dval">${order.customerName || "Mgeni"}</span></div>
+    <div class="detail-row"><span class="dlabel">Namba ya Simu</span><span class="dval">${addr ? addr.phone : "—"}</span></div>
+    <div class="detail-row"><span class="dlabel">Mtandao wa Malipo</span><span class="dval">${netMap[order.network] || order.network || "—"}</span></div>
+    <div class="detail-row"><span class="dlabel">Namba ya Muamala</span><span class="dval">${order.txnId || "—"}</span></div>
+    <div class="detail-row"><span class="dlabel">Kiasi Kilicholipwa</span><span class="dval">${formatTZS(order.total)}</span></div>
+    <div class="detail-row"><span class="dlabel">Anwani</span><span class="dval">${addr ? addr.details : "—"}</span></div>
+    <div class="detail-row"><span class="dlabel">Maelezo ya Mteja</span><span class="dval">${order.note || "—"}</span></div>
+    <div class="detail-row"><span class="dlabel">Hali ya Sasa</span><span class="dval">${statusLabel(order.status)}</span></div>
+  `;
+  document.getElementById("adminNoteInput").value = order.adminNote || "";
+  document.getElementById("detailModal").classList.add("show");
+}
+function closeDetailModal(){
+  document.getElementById("detailModal").classList.remove("show");
+}
+function saveAdminNote(){
+  const code = document.getElementById("detailOrderCode").value;
+  const note = document.getElementById("adminNoteInput").value.trim();
+  updateOrder(code, { adminNote: note, adminNoteAt: new Date().toISOString() });
+  showToast("Ujumbe umetumwa kwa mteja", "success");
+  closeDetailModal();
+  renderOrders();
+}
+
+renderFilters();
+renderOrders();
+</script>
+</body>
+</html>

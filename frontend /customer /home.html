@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>UJASI — Nyumbani</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .location-bar{ display:flex; align-items:center; gap:8px; padding:14px 18px 0; }
+  .location-bar .pin{ font-size:16px; }
+  .location-bar .addr{ font-size:13px; font-weight:600; }
+  .location-bar .change{ font-size:11.5px; color:var(--primary); font-weight:700; margin-left:auto; }
+
+  .search-wrap{ padding: 12px 18px 4px; }
+  .search-box{
+    display:flex; align-items:center; gap:8px; background: var(--surface);
+    border:1.5px solid var(--line); border-radius: var(--r-pill); padding:12px 16px;
+  }
+  .search-box input{ border:none; background:transparent; flex:1; font-size:14.5px; font-family:var(--font-body); }
+  .search-box input:focus{ outline:none; }
+
+  .cat-scroll{ display:flex; gap:8px; overflow-x:auto; padding: 14px 18px; scrollbar-width:none; }
+  .cat-scroll::-webkit-scrollbar{ display:none; }
+  .cat-chip{
+    flex:none; padding:9px 16px; border-radius: var(--r-pill); border:1.5px solid var(--line);
+    font-size:13px; font-weight:600; color: var(--ink-soft); background:#fff; cursor:pointer; white-space:nowrap;
+  }
+  .cat-chip.active{ background: var(--primary); border-color: var(--primary); color:#fff; }
+
+  .promo-strip{ margin: 4px 18px 6px; }
+  .promo-card{
+    background: linear-gradient(120deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: var(--r-lg); padding:16px 18px; color:#fff; position:relative; overflow:hidden;
+  }
+  .promo-card::after{ content:"💧"; position:absolute; font-size:64px; right:-6px; bottom:-16px; opacity:.18; }
+  .promo-card .peyo{ font-family: var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; opacity:.85; }
+  .promo-card h3{ color:#fff; font-size:16px; margin:4px 0 10px; }
+
+  .rest-list{ padding: 4px 18px 20px; display:flex; flex-direction:column; gap:14px; }
+  .rest-card{ border:1px solid var(--line); border-radius: var(--r-lg); overflow:hidden; background:#fff; box-shadow: var(--shadow-1); }
+  .rest-card .cover{ position:relative; height:120px; overflow:hidden; background:var(--surface); }
+  .rest-card .cover img{ width:100%; height:100%; object-fit:cover; }
+  .rest-card .cover .status{ position:absolute; top:10px; left:10px; }
+  .rest-card .cover .fee{ position:absolute; top:10px; right:10px; }
+  .rest-card .info{ padding:12px 14px; }
+  .rest-card .info h3{ font-size:15px; margin-bottom:3px; }
+  .rest-card .meta{ display:flex; gap:12px; font-size:12px; color: var(--ink-soft); }
+  .rest-card.closed{ opacity:.55; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> UJASI</div>
+    <div class="spacer"></div>
+    <a href="notifications.html" class="back" style="text-decoration:none;">🔔</a>
+  </div>
+
+  <div class="location-bar reveal">
+    <span class="pin">📍</span>
+    <span class="addr">Kinyerezi, Dodoma</span>
+    <a href="addresses.html" class="change">Badilisha</a>
+  </div>
+
+  <div class="search-wrap reveal" style="animation-delay:.04s">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Tafuta mgahawa au chakula...">
+    </div>
+  </div>
+
+  <div class="cat-scroll reveal" id="catScroll" style="animation-delay:.08s"></div>
+
+  <div id="activePromoBanner"></div>
+
+  <div class="promo-strip reveal" style="animation-delay:.1s">
+    <a href="../water/water-delivery.html" style="text-decoration:none;">
+      <div class="promo-card">
+        <div class="peyo">Huduma Maalum</div>
+        <h3>Maji Safi ya Kunywa — Delivery Bure</h3>
+        <span class="btn btn-accent btn-sm">Omba Sasa →</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="section-title container" style="padding-bottom:0;">
+    <h2>Migahawa karibu nawe</h2>
+    <span class="muted" id="restCount"></span>
+  </div>
+
+  <div class="rest-list stagger" id="restList"></div>
+
+</div>
+
+<div class="bottom-nav">
+  <a href="home.html" class="active"><span class="ic">🏠</span>Nyumbani</a>
+  <a href="orders.html"><span class="ic">🧾</span>Oda Zangu</a>
+  <a href="cart.html"><span class="ic">🛒</span>Kikapu <span data-cart-badge style="display:none;background:var(--accent);color:#3A2200;border-radius:999px;font-size:10px;padding:1px 5px;margin-left:2px;">0</span></a>
+  <a href="../water/water-delivery.html"><span class="ic">💧</span>Maji</a>
+  <a href="profile.html"><span class="ic">👤</span>Profaili</a>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/super-admin.js"></script>
+<script>
+let activeCategory = "Zote";
+
+function renderCategories(){
+  const wrap = document.getElementById("catScroll");
+  wrap.innerHTML = DEMO_CATEGORIES.map(c =>
+    `<div class="cat-chip ${c===activeCategory?"active":""}" onclick="selectCategory('${c}')">${c}</div>`
+  ).join("");
+}
+function selectCategory(c){
+  activeCategory = c;
+  renderCategories();
+  renderRestaurants();
+}
+
+function renderRestaurants(){
+  const q = (document.getElementById("searchInput").value || "").toLowerCase();
+  let list = getAllPlatformRestaurants().filter(r => {
+    const matchesCat = activeCategory === "Zote" || r.category === activeCategory;
+    const matchesSearch = r.name.toLowerCase().includes(q) ||
+      r.foods.some(f => f.name.toLowerCase().includes(q));
+    return matchesCat && matchesSearch;
+  });
+
+  document.getElementById("restCount").textContent = `${list.length} zimepatikana`;
+
+  document.getElementById("restList").innerHTML = list.map(r => `
+    <a href="restaurant.html?id=${r.id}" style="text-decoration:none; color:inherit;">
+      <div class="rest-card ${r.isOpen ? "" : "closed"}">
+        <div class="cover">
+          <img src="${r.cover}" alt="${r.name}" loading="lazy">
+          <span class="badge ${r.isOpen ? "badge-success" : "badge-alert"} status">${r.isOpen ? "Wazi" : "Imefungwa"}</span>
+          <span class="badge badge-primary fee">🚴 ${formatTZS(r.deliveryFee)}</span>
+        </div>
+        <div class="info">
+          <h3>${r.name}</h3>
+          <div class="meta">
+            <span>⭐ ${r.rating} (${r.reviews})</span>
+            <span>⏱ ${r.prepTime}</span>
+            <span>📍 ${r.distanceKm} km</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  `).join("") || `<div class="empty"><div class="ic">🍽️</div>Hakuna mgahawa uliopatikana</div>`;
+}
+
+document.getElementById("searchInput").addEventListener("input", renderRestaurants);
+
+function renderPromoBanner(){
+  try{
+    const active = getActivePromotions();
+    const wrap = document.getElementById("activePromoBanner");
+    if(active.length === 0){ wrap.innerHTML = ""; return; }
+    const p = active[0];
+    wrap.innerHTML = `
+      <div class="promo-strip reveal" style="animation-delay:.06s">
+        <a href="promotions.html" style="text-decoration:none;">
+          <div class="promo-card" style="background: linear-gradient(120deg, var(--accent) 0%, var(--accent-dark) 100%);">
+            <div class="peyo" style="color:#3A2200; opacity:.85;">🎁 Ofa Maalum${active.length > 1 ? ` (+${active.length - 1} zaidi)` : ""}</div>
+            <h3 style="color:#3A2200;">${p.title}</h3>
+            <span class="btn btn-primary btn-sm">Ona Ofa →</span>
+          </div>
+        </a>
+      </div>`;
+  }catch(err){
+    console.warn("Imeshindikana kuonyesha banner ya ofa:", err);
+  }
+}
+
+renderPromoBanner();
+renderCategories();
+renderRestaurants();
+</script>
+
+</body>
+</html>

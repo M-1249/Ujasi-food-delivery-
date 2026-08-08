@@ -1,0 +1,72 @@
+rules_version = '2';
+
+/* =====================================================
+   FIRESTORE SECURITY RULES — UJASI FOOD DELIVERY
+   Bandika hizi kwenye Firebase Console → Firestore Database
+   → Rules, kisha "Publish".
+
+   Kanuni kuu: kila mtumiaji anaweza kusoma/kuandika hati
+   yake mwenyewe TU ndani ya "users/{uid}" (jina, simu, role).
+   "role" haiwezi kubadilishwa na mtumiaji mwenyewe baada ya
+   kuundwa mara ya kwanza - hii inazuia mtu "kujipandisha cheo"
+   mwenyewe kuwa admin kwa kuhariri hati yake.
+   ===================================================== */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- users/{uid} ----------
+       Kila mtumiaji (customer, restaurant_admin, rider,
+       admin_layer1, super_admin) ana hati moja hapa yenye
+       uwanja "role" unaotumika na kurasa za login kuthibitisha
+       ni paneli gani anaruhusiwa kuingia. */
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role; // role haibadiliki baada ya kuundwa
+      allow delete: if false; // hakuna anayeruhusiwa kufuta akaunti moja kwa moja
+    }
+
+    /* ---------- restaurants/{restaurantId} ----------
+       (Muundo wa baadaye - bado hazijahamishwa kutoka
+       localStorage. Weka hapa mfano wa kuanzia.)
+       Wateja wote wanaweza kusoma (browse), lakini kuandika
+       kunaruhusiwa tu na mwenye mgahawa (ownerId == uid) au
+       admin_layer1/super_admin. */
+    match /restaurants/{restaurantId} {
+      allow read: if true; // orodha ya migahawa ni ya umma
+      allow write: if request.auth != null && (
+        resource == null // kuunda mpya (create) - itathibitishwa na Cloud Function badaye
+        || resource.data.ownerId == request.auth.uid
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin_layer1", "super_admin"]
+      );
+
+      match /foods/{foodId} {
+        allow read: if true;
+        allow write: if request.auth != null &&
+          get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    /* ---------- orders/{orderId} ----------
+       Mteja anasoma/anaandika oda zake mwenyewe. Mgahawa,
+       rider, na admin wanasoma/wanaandika oda zinazowahusu.
+       MUHIMU: hali ya "paid"/malipo haipaswi kuandikwa moja
+       kwa moja na client - Cloud Function pekee (baada ya
+       kuthibitisha Transaction ID) ndiyo inapaswa kuandika
+       "payment_confirmed". Mstari wa mwisho hapa chini
+       unaonyesha jinsi ya kuzuia hilo. */
+    match /orders/{orderId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && request.resource.data.status != "payment_confirmed"; // Cloud Function pekee inaruhusiwa kuweka hii
+    }
+
+    /* ---------- Kila kitu kingine: kimefungwa kwa default ---------- */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

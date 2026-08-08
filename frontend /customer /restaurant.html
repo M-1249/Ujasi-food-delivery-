@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Menyu — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  body{ padding-bottom: 100px; }
+  .r-hero{ position:relative; height:170px; background:var(--surface); }
+  .r-hero img{ width:100%; height:100%; object-fit:cover; }
+  .r-hero .topbar{ position:absolute; top:0; left:0; right:0; background:transparent; border:none; }
+  .r-hero .topbar .back{ background:rgba(255,255,255,.9); }
+  .r-panel{ margin:-26px 16px 0; position:relative; z-index:2; background:#fff; border-radius: var(--r-lg); border:1px solid var(--line); padding:16px; box-shadow: var(--shadow-2); }
+  .r-panel .meta{ display:flex; gap:14px; font-size:12.5px; color:var(--ink-soft); margin-top:6px; flex-wrap:wrap; }
+
+  .food-row{ display:flex; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); }
+  .food-row img{ width:76px; height:76px; border-radius: var(--r-md); object-fit:cover; flex:none; }
+  .food-row .fname{ font-size:14.5px; font-weight:600; margin-bottom:3px; }
+  .food-row .fdesc{ font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .food-row .frow{ display:flex; align-items:center; justify-content:space-between; }
+  .food-row .fprice{ font-family: var(--font-mono); font-weight:700; color: var(--primary-dark); font-size:13.5px; }
+  .stepper{ display:flex; align-items:center; gap:8px; }
+  .stepper button{ width:26px; height:26px; border-radius:50%; border:1.5px solid var(--primary); background:#fff; color:var(--primary); font-weight:700; cursor:pointer; }
+  .stepper .add-btn{ background:var(--primary); color:#fff; border-radius: var(--r-pill); padding:6px 14px; font-size:12px; font-weight:700; border:none; cursor:pointer; }
+  .stepper span{ min-width:16px; text-align:center; font-weight:700; font-size:13px; }
+
+  .cart-fab{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:calc(100% - 36px); max-width:444px;
+    z-index:60; display:none;
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="r-hero">
+    <img id="restCover" src="" alt="">
+    <div class="topbar">
+      <button class="back" onclick="history.back()">←</button>
+      <div class="spacer"></div>
+      <button class="back">♡</button>
+    </div>
+  </div>
+
+  <div class="r-panel reveal">
+    <div class="row between">
+      <h2 id="restName" style="font-size:18px;"></h2>
+      <span class="badge badge-success" id="restStatus"></span>
+    </div>
+    <div class="meta">
+      <span id="restRating"></span>
+      <span id="restTime"></span>
+      <span id="restDist"></span>
+      <span id="restFee"></span>
+    </div>
+  </div>
+
+  <div class="section-title container" style="padding-bottom:0;">
+    <h2>Menyu</h2>
+  </div>
+
+  <div id="foodList"></div>
+
+  <div class="section-title container" style="padding-bottom:0;">
+    <h2>Maoni ya Wateja</h2>
+  </div>
+  <div id="reviewsList" style="padding: 4px 18px 24px;"></div>
+
+</div>
+
+<div class="cart-fab" id="cartFab">
+  <a href="cart.html" class="btn btn-primary btn-block" style="justify-content:space-between; padding:16px 20px;">
+    <span id="fabCount">0 vitu</span>
+    <span id="fabTotal">TSh 0</span>
+    <span>Angalia Kikapu →</span>
+  </a>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/super-admin.js"></script>
+<script>
+const restId = qParam("id") || "r1";
+const rest = findAnyRestaurant(restId);
+
+if(!rest){
+  document.querySelector(".app-shell").innerHTML = `<div class="empty container"><div class="ic">😕</div>Mgahawa haujapatikana</div>`;
+} else {
+  document.getElementById("restCover").src = rest.cover;
+  document.getElementById("restName").textContent = rest.name;
+  document.getElementById("restStatus").textContent = rest.isOpen ? "Wazi" : "Imefungwa";
+  document.getElementById("restStatus").className = "badge " + (rest.isOpen ? "badge-success" : "badge-alert");
+  document.getElementById("restRating").textContent = `⭐ ${rest.rating} (${rest.reviews})`;
+  document.getElementById("restTime").textContent = `⏱ ${rest.prepTime}`;
+  document.getElementById("restDist").textContent = `📍 ${rest.distanceKm} km`;
+  document.getElementById("restFee").textContent = `🚴 ${formatTZS(rest.deliveryFee)}`;
+
+  renderFoods();
+  renderReviews();
+}
+
+function renderReviews(){
+  const reviews = getReviewsForRestaurant(rest.id).slice(0, 10);
+  const wrap = document.getElementById("reviewsList");
+  if(reviews.length === 0){
+    wrap.innerHTML = `<div class="empty" style="padding:24px;"><div class="ic">⭐</div>Bado hakuna maoni kwa mgahawa huu</div>`;
+    return;
+  }
+  wrap.innerHTML = reviews.map(r => `
+    <div class="card" style="margin-bottom:10px;">
+      <div class="row between">
+        <span style="font-weight:700; font-size:13px;">${r.customerName}</span>
+        <span style="color:var(--accent); letter-spacing:2px;">${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}</span>
+      </div>
+      ${r.comment ? `<p class="muted" style="margin-top:6px; font-size:12.5px;">${r.comment}</p>` : ""}
+    </div>
+  `).join("");
+}
+
+function qtyInCart(foodId){
+  const item = getCart().find(c => c.id === foodId);
+  return item ? item.qty : 0;
+}
+
+function renderFoods(){
+  document.getElementById("foodList").innerHTML = rest.foods.map(f => `
+    <div class="food-row">
+      <img src="${f.photo}" alt="${f.name}">
+      <div style="flex:1;">
+        <div class="fname">${f.name}</div>
+        <div class="fdesc">${f.desc}</div>
+        <div class="frow">
+          <span class="fprice">${formatTZS(f.price)}</span>
+          <div id="stepper-${f.id}"></div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+  rest.foods.forEach(f => renderStepper(f));
+  updateFab();
+}
+
+function renderStepper(f){
+  const qty = qtyInCart(f.id);
+  const el = document.getElementById(`stepper-${f.id}`);
+  if(qty === 0){
+    el.innerHTML = `<button class="add-btn" onclick="addFood('${f.id}')">+ Ongeza</button>`;
+  } else {
+    el.innerHTML = `
+      <div class="stepper">
+        <button onclick="changeQty('${f.id}', -1)">−</button>
+        <span>${qty}</span>
+        <button onclick="changeQty('${f.id}', 1)">+</button>
+      </div>`;
+  }
+}
+
+function addFood(foodId){
+  const f = rest.foods.find(x => x.id === foodId);
+  addToCart({ id: f.id, restaurantId: rest.id, restaurantName: rest.name, name: f.name, price: f.price, photo: f.photo, qty: 1 });
+  renderStepper(f);
+  updateFab();
+}
+function changeQty(foodId, delta){
+  const item = getCart().find(c => c.id === foodId);
+  const newQty = (item ? item.qty : 0) + delta;
+  setCartQty(foodId, newQty);
+  renderStepper(rest.foods.find(x => x.id === foodId));
+  updateFab();
+}
+function updateFab(){
+  const fab = document.getElementById("cartFab");
+  const n = cartCount();
+  if(n > 0){
+    fab.style.display = "block";
+    document.getElementById("fabCount").textContent = `${n} vitu`;
+    document.getElementById("fabTotal").textContent = formatTZS(cartSubtotal());
+  } else {
+    fab.style.display = "none";
+  }
+}
+</script>
+</body>
+</html>

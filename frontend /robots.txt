@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Kurasa za paneli za ndani (admin/mgahawa/rider) hazihitaji kuonekana Google
+Disallow: /restaurant-admin/
+Disallow: /rider/
+Disallow: /admin-layer1/
+Disallow: /super-admin/
+
+Sitemap: https://ujasi-food-delivery.vercel.app/sitemap.xml

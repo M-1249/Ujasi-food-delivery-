@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Anwani Zangu — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .addr-card{ margin:0 18px 12px; display:flex; gap:12px; align-items:flex-start; }
+  .addr-card .ic{ font-size:20px; }
+  .addr-card .label{ font-weight:700; font-size:14px; }
+  .addr-card .details{ font-size:12.5px; color: var(--ink-soft); margin-top:2px; }
+  .addr-card .del{ margin-left:auto; background:none; border:none; color: var(--alert); font-size:13px; cursor:pointer; }
+
+  .map-wrap{ position:relative; border-radius: var(--r-lg); overflow:hidden; border:1px solid var(--line); margin-bottom:14px; }
+  #mapEmbed{ width:100%; height:210px; border:0; display:block; background: var(--surface); }
+  .search-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .search-row input{ flex:1; }
+  .search-results{ margin-bottom:10px; border:1px solid var(--line); border-radius: var(--r-md); overflow:hidden; }
+  .search-result-item{ padding:10px 12px; font-size:12.5px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .search-result-item:last-child{ border-bottom:none; }
+  .search-result-item:active{ background: var(--surface); }
+  .locate-btn{
+    width:100%; margin-top:10px;
+    background:#fff; border:1.5px solid var(--line); border-radius: var(--r-pill);
+    padding:11px 14px; font-size:13px; font-weight:700; color: var(--primary-dark);
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .nudge-pad{ display:grid; grid-template-columns:repeat(3,36px); grid-template-rows:repeat(3,36px); gap:4px; justify-content:center; margin-top:10px; }
+  .nudge-btn{ border:1px solid var(--line); background:#fff; border-radius:8px; font-size:14px; cursor:pointer; color: var(--primary); }
+  .nudge-btn:active{ background: var(--surface); }
+  .coords-chip{
+    font-family: var(--font-mono); font-size:11.5px; color: var(--primary-dark);
+    background: var(--primary-tint); border-radius: var(--r-pill); padding:6px 12px;
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <button class="back" onclick="history.back()">←</button>
+    <h2 style="font-size:16px; margin:0;">Anwani Zangu</h2>
+  </div>
+
+  <div id="addrList" class="container" style="padding-top:14px;"></div>
+
+  <div class="container">
+    <div class="card">
+      <h3 style="font-size:14px; margin-bottom:12px;">Ongeza Anwani Mpya</h3>
+
+      <div class="field">
+        <label>📍 Weka Eneo Lako (Bure — Hakuna Malipo)</label>
+        <div class="search-row">
+          <input type="text" id="mapSearchInput" placeholder="Tafuta mtaa, kata, au alama...">
+          <button type="button" class="btn btn-outline btn-sm" id="searchBtn">🔍</button>
+        </div>
+        <div class="search-results" id="searchResults" style="display:none;"></div>
+
+        <div class="map-wrap">
+          <iframe id="mapEmbed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+
+        <button type="button" class="locate-btn" id="useCurrentLocBtn">📡 Tumia Eneo Langu la Sasa (GPS)</button>
+
+        <div class="row between" style="margin-top:10px;">
+          <span class="muted" style="font-size:11px;">Sahihisha kidogo:</span>
+          <div class="nudge-pad">
+            <span></span><button type="button" class="nudge-btn" onclick="nudge(1,0)">▲</button><span></span>
+            <button type="button" class="nudge-btn" onclick="nudge(0,-1)">◀</button>
+            <span style="display:flex; align-items:center; justify-content:center; font-size:12px;">📍</span>
+            <button type="button" class="nudge-btn" onclick="nudge(0,1)">▶</button>
+            <span></span><button type="button" class="nudge-btn" onclick="nudge(-1,0)">▼</button><span></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="coordsDisplay" class="coords-chip" style="display:none;">📌 <span id="coordsText"></span></div>
+
+      <div class="field">
+        <label>Jina la Anwani</label>
+        <input type="text" id="aLabel" placeholder="Mfano: Nyumbani, Ofisini">
+      </div>
+      <div class="field">
+        <label>Mtaa / Kata / Alama</label>
+        <input type="text" id="aDetails" placeholder="Mfano: Mtaa wa Uhuru, karibu na duka la Neema">
+      </div>
+      <div class="field">
+        <label>Namba ya Simu ya Mpokeaji</label>
+        <input type="tel" id="aPhone" placeholder="0712 345 678">
+      </div>
+      <button class="btn btn-primary btn-block" id="saveAddrBtn">Hifadhi Anwani</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/location.js"></script>
+<script>
+let currentLatLng = null;
+const DODOMA = { lat: -6.1630, lng: 35.7516 }; // default kama GPS haipatikani
+
+function updateMapView(lat, lng){
+  currentLatLng = { lat, lng };
+  document.getElementById("mapEmbed").src = buildEmbedUrl(lat, lng);
+  document.getElementById("coordsDisplay").style.display = "inline-flex";
+  document.getElementById("coordsText").textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+function nudge(dLat, dLng){
+  if(!currentLatLng) return;
+  const step = 0.0015; // ~150m kwa kila bofya
+  updateMapView(currentLatLng.lat + dLat * step, currentLatLng.lng + dLng * step);
+}
+
+// Anzia Dodoma kama chaguo-msingi
+updateMapView(DODOMA.lat, DODOMA.lng);
+
+document.getElementById("useCurrentLocBtn").addEventListener("click", function(){
+  showToast("Tunatafuta eneo lako...");
+  locateMe(
+    async (lat, lng) => {
+      updateMapView(lat, lng);
+      showToast("Eneo lako limepatikana", "success");
+      try{
+        const addr = await reverseGeocodePlace(lat, lng);
+        if(addr) document.getElementById("aDetails").value = addr;
+      }catch(e){ console.warn(e); }
+    },
+    (msg) => showToast(msg, "error")
+  );
+});
+
+async function runSearch(){
+  const q = document.getElementById("mapSearchInput").value.trim();
+  if(!q){ showToast("Andika mahali unapotafuta", "error"); return; }
+  const resultsBox = document.getElementById("searchResults");
+  resultsBox.style.display = "block";
+  resultsBox.innerHTML = `<div class="search-result-item">Inatafuta...</div>`;
+  try{
+    const results = await searchPlace(q);
+    if(!results.length){
+      resultsBox.innerHTML = `<div class="search-result-item">Hakuna eneo lililopatikana</div>`;
+      return;
+    }
+    resultsBox.innerHTML = results.map((r, i) =>
+      `<div class="search-result-item" onclick="pickResult(${i})">${r.display_name}</div>`
+    ).join("");
+    window._searchResults = results;
+  }catch(e){
+    console.error(e);
+    resultsBox.innerHTML = `<div class="search-result-item">Utafutaji umeshindikana, jaribu tena</div>`;
+  }
+}
+function pickResult(i){
+  const r = window._searchResults[i];
+  updateMapView(parseFloat(r.lat), parseFloat(r.lon));
+  document.getElementById("aDetails").value = r.display_name;
+  document.getElementById("searchResults").style.display = "none";
+  document.getElementById("mapSearchInput").value = "";
+}
+document.getElementById("searchBtn").addEventListener("click", runSearch);
+document.getElementById("mapSearchInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){ e.preventDefault(); runSearch(); }
+});
+</script>
+<script>
+function render(){
+  const list = getAddresses();
+  const wrap = document.getElementById("addrList");
+  if(list.length === 0){
+    wrap.innerHTML = `<div class="empty" style="padding:24px;"><div class="ic">📍</div>Hujaongeza anwani yoyote bado</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(a => `
+    <div class="card addr-card">
+      <div class="ic">📍</div>
+      <div style="flex:1;">
+        <div class="label">${a.label} ${a.lat ? '<span class="badge badge-success" style="margin-left:6px;">GPS</span>' : ''}</div>
+        <div class="details">${a.details}</div>
+        <div class="details">📞 ${a.phone}</div>
+      </div>
+      <button class="del" onclick="removeAddr('${a.id}')">Futa</button>
+    </div>
+  `).join("");
+}
+function removeAddr(id){
+  deleteAddress(id);
+  render();
+  showToast("Anwani imefutwa");
+}
+document.getElementById("saveAddrBtn").addEventListener("click", function(){
+  const label = document.getElementById("aLabel").value.trim();
+  const details = document.getElementById("aDetails").value.trim();
+  const phone = document.getElementById("aPhone").value.trim();
+  if(!label || !details || !phone){
+    showToast("Tafadhali jaza taarifa zote", "error");
+    return;
+  }
+  const addrData = { label, details, phone };
+  if(currentLatLng){
+    addrData.lat = currentLatLng.lat;
+    addrData.lng = currentLatLng.lng;
+  }
+  saveAddress(addrData);
+  document.getElementById("aLabel").value = "";
+  document.getElementById("aDetails").value = "";
+  document.getElementById("aPhone").value = "";
+  render();
+  showToast("Anwani imehifadhiwa" + (currentLatLng ? " pamoja na eneo la ramani" : ""), "success");
+});
+render();
+</script>
+</body>
+</html>

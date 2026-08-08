@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Promotions — Super Admin | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_superadmin_session")){
+    window.location.replace("login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .promo-card{ margin:0 18px 14px; overflow:hidden; padding:0; }
+  .promo-cover{ height:110px; background:var(--surface); position:relative; }
+  .promo-cover img{ width:100%; height:100%; object-fit:cover; }
+  .promo-cover .pbadge{ position:absolute; top:10px; left:10px; }
+  .promo-body{ padding:14px; }
+  .promo-actions{ display:flex; gap:8px; margin-top:10px; }
+
+  .modal-bg{ display:none; position:fixed; inset:0; background:rgba(11,43,38,.45); z-index:80; align-items:flex-end; justify-content:center; }
+  .modal-bg.show{ display:flex; }
+  .modal-sheet{ background:#fff; width:100%; max-width:480px; border-radius:22px 22px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom)); animation: reveal-up .3s cubic-bezier(.16,.8,.24,1) both; max-height:88vh; overflow-y:auto; }
+  .fab-add{ position:fixed; bottom:96px; left:50%; transform:translateX(calc(-50% + 190px)); width:52px; height:52px; border-radius:50%; background:var(--accent); color:#3A2200; border:none; font-size:24px; box-shadow:var(--shadow-2); z-index:55; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Promotions &amp; Banners</div>
+  </div>
+
+  <div class="container" style="padding-bottom:6px;">
+    <p class="muted">Hizi zinaonekana kwa wateja wote kwenye ukurasa wa nyumbani na "Ofa Maalum".</p>
+  </div>
+
+  <div id="promoList" class="stagger"></div>
+</div>
+
+<button class="fab-add" onclick="openModal()">+</button>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="approvals.html"><span class="ic">✅</span>Idhini</a>
+  <a href="promotions.html" class="active"><span class="ic">🎁</span>Ofa</a>
+  <a href="reviews.html"><span class="ic">⭐</span>Reviews</a>
+  <a href="settings.html"><span class="ic">⚙️</span>Mipangilio</a>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal-sheet">
+    <h3 id="modalTitle" style="font-size:16px;">Ongeza Ofa/Banner</h3>
+    <input type="hidden" id="promoId">
+    <div class="field"><label>Kichwa cha Habari</label><input type="text" id="pTitle" placeholder="Mfano: Punguzo la 20% Wikendi Hii"></div>
+    <div class="field"><label>Maelezo Mafupi</label><textarea id="pDesc" rows="2" placeholder="Maelezo ya ofa"></textarea></div>
+    <div class="field"><label>Kiungo cha Picha (URL)</label><input type="text" id="pImage" placeholder="https://..."></div>
+    <div class="grid-2">
+      <div class="field"><label>Punguzo (%) — hiari</label><input type="number" id="pDiscount" placeholder="20"></div>
+      <div class="field"><label>Msimbo wa Ofa — hiari</label><input type="text" id="pCode" placeholder="UJASI20"></div>
+    </div>
+    <div class="field"><label>Tarehe ya Mwisho — hiari</label><input type="date" id="pEndDate"></div>
+    <div class="row gap-12" style="margin-top:6px;">
+      <button class="btn btn-outline btn-block" onclick="closeModal()">Ghairi</button>
+      <button class="btn btn-primary btn-block" onclick="savePromoForm()">Hifadhi</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/super-admin.js"></script>
+<script>
+function render(){
+  const list = getAllPromotions();
+  const wrap = document.getElementById("promoList");
+  if(list.length === 0){
+    wrap.innerHTML = `<div class="empty"><div class="ic">🎁</div>Bado hakuna ofa/banner. Bofya + kuongeza.</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(p => `
+    <div class="card promo-card">
+      <div class="promo-cover">
+        <img src="${p.image || 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?q=80&w=800'}" alt="${p.title}">
+        <span class="badge ${p.active ? 'badge-success' : 'badge-alert'} pbadge">${p.active ? 'Inaonekana' : 'Imefichwa'}</span>
+      </div>
+      <div class="promo-body">
+        <div style="font-weight:700; font-size:14.5px;">${p.title}</div>
+        <div class="muted" style="margin-top:2px;">${p.description || ""}</div>
+        <div class="row gap-8" style="margin-top:8px;">
+          ${p.discountPercent ? `<span class="badge badge-primary">${p.discountPercent}% OFF</span>` : ""}
+          ${p.code ? `<span class="badge badge-warn">${p.code}</span>` : ""}
+          ${p.endDate ? `<span class="muted" style="font-size:11px;">Hadi ${p.endDate}</span>` : ""}
+        </div>
+        <div class="promo-actions">
+          <button class="btn btn-outline btn-sm" onclick="editPromo('${p.id}')">Hariri</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleActive('${p.id}')">${p.active ? 'Ficha' : 'Onyesha'}</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--alert); border-color:var(--alert);" onclick="removePromo('${p.id}')">Futa</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openModal(){
+  document.getElementById("modalTitle").textContent = "Ongeza Ofa/Banner";
+  ["promoId","pTitle","pDesc","pImage","pDiscount","pCode","pEndDate"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("modal").classList.add("show");
+}
+function closeModal(){ document.getElementById("modal").classList.remove("show"); }
+
+function editPromo(id){
+  const p = getAllPromotions().find(x => x.id === id);
+  if(!p) return;
+  document.getElementById("modalTitle").textContent = "Hariri Ofa/Banner";
+  document.getElementById("promoId").value = p.id;
+  document.getElementById("pTitle").value = p.title;
+  document.getElementById("pDesc").value = p.description || "";
+  document.getElementById("pImage").value = p.image || "";
+  document.getElementById("pDiscount").value = p.discountPercent || "";
+  document.getElementById("pCode").value = p.code || "";
+  document.getElementById("pEndDate").value = p.endDate || "";
+  document.getElementById("modal").classList.add("show");
+}
+
+function savePromoForm(){
+  const id = document.getElementById("promoId").value;
+  const title = document.getElementById("pTitle").value.trim();
+  if(!title){ showToast("Weka kichwa cha habari", "error"); return; }
+
+  const promo = {
+    id: id || null,
+    title,
+    description: document.getElementById("pDesc").value.trim(),
+    image: document.getElementById("pImage").value.trim(),
+    discountPercent: Number(document.getElementById("pDiscount").value) || null,
+    code: document.getElementById("pCode").value.trim() || null,
+    endDate: document.getElementById("pEndDate").value || null,
+    active: id ? getAllPromotions().find(p => p.id === id).active : true
+  };
+  savePromotion(promo);
+  showToast("Ofa imehifadhiwa", "success");
+  closeModal();
+  render();
+}
+function toggleActive(id){ togglePromotionActive(id); render(); }
+function removePromo(id){
+  if(!confirm("Futa ofa hii?")) return;
+  deletePromotion(id);
+  showToast("Ofa imefutwa", "success");
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

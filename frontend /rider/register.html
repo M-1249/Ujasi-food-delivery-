@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sajili Rider — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <button class="back" onclick="history.back()">←</button>
+    <div class="brand"><div class="cross"></div> UJASI</div>
+  </div>
+
+  <div class="container reveal">
+    <div class="badge badge-primary" style="margin-bottom:10px;">SAJILI KAMA RIDER</div>
+    <h1 style="font-size:22px;">Karibu kwenye UJASI</h1>
+    <p class="muted" style="margin-bottom:22px;">Baada ya kusajili, akaunti yako itasubiri idhini ya Msimamizi kabla hujaanza kupokea oda.</p>
+
+    <form id="regForm">
+      <div class="field">
+        <label>Jina Kamili</label>
+        <input type="text" id="rName" placeholder="Jina Lako" required>
+      </div>
+      <div class="field">
+        <label>Namba ya Simu</label>
+        <input type="tel" id="rPhone" placeholder="0712 345 678" required>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Aina ya Chombo</label>
+          <select id="rVehicle">
+            <option>Pikipiki</option><option>Baiskeli</option><option>Gari</option><option>Kwa Miguu</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Namba ya Bango</label>
+          <input type="text" id="rPlate" placeholder="T 123 ABC">
+        </div>
+      </div>
+      <div class="field">
+        <label>Barua Pepe</label>
+        <input type="email" id="rEmail" placeholder="rider@mfano.com" required>
+      </div>
+      <div class="field">
+        <label>Nenosiri</label>
+        <input type="password" id="rPass" placeholder="Angalau herufi 6" required minlength="6">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="regBtn">Sajili Kama Rider</button>
+    </form>
+
+    <div class="hr"></div>
+    <p style="text-align:center;" class="muted">
+      Una akaunti tayari? <a href="login.html" style="font-weight:700;">Ingia</a>
+    </p>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/rider.js"></script>
+<script>
+document.getElementById("regForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const name = document.getElementById("rName").value.trim();
+  const phone = document.getElementById("rPhone").value.trim();
+  const vehicle = document.getElementById("rVehicle").value;
+  const plate = document.getElementById("rPlate").value.trim();
+  const email = document.getElementById("rEmail").value.trim();
+  const pass = document.getElementById("rPass").value;
+
+  if(!name || !phone || !email || !pass){
+    showToast("Tafadhali jaza sehemu zote za lazima", "error");
+    return;
+  }
+
+  const btn = document.getElementById("regBtn");
+  btn.disabled = true;
+  btn.textContent = "Inasajili...";
+
+  const newRider = createNewRider({ name, phone, vehicle, plate });
+
+  const proceedDemo = () => {
+    localStorage.setItem("ujasi_rider_session", newRider.id);
+    showToast("Umesajiliwa! Akaunti yako inasubiri idhini ya Msimamizi.", "success");
+    setTimeout(() => window.location.href = "dashboard.html", 800);
+  };
+
+  if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length){
+    firebase.auth().createUserWithEmailAndPassword(email, pass)
+      .then((cred) => db.collection("users").doc(cred.user.uid).set({
+        name, phone, email, role: "rider", riderId: newRider.id,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }))
+      .then(proceedDemo)
+      .catch((err) => { console.error(err); proceedDemo(); });
+  } else {
+    proceedDemo();
+  }
+});
+</script>
+</body>
+</html>

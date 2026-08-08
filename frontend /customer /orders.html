@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Oda Zangu — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .order-card{ margin: 0 18px 14px; }
+  .order-card .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .order-card .items{ font-size:12.5px; color: var(--ink-soft); margin-bottom:8px; }
+  .review-btn{ margin-top:10px; width:100%; }
+  .star-picker{ display:flex; gap:8px; justify-content:center; font-size:34px; margin:10px 0; }
+  .star-picker span{ cursor:pointer; color:var(--line); transition: color .15s ease, transform .15s ease; }
+  .star-picker span.active{ color:var(--accent); transform:scale(1.1); }
+
+  .modal-bg{ display:none; position:fixed; inset:0; background:rgba(11,43,38,.45); z-index:80; align-items:flex-end; justify-content:center; }
+  .modal-bg.show{ display:flex; }
+  .modal-sheet{ background:#fff; width:100%; max-width:480px; border-radius:22px 22px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom)); animation: reveal-up .3s cubic-bezier(.16,.8,.24,1) both; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <button class="back" onclick="history.back()">←</button>
+    <h2 style="font-size:16px; margin:0;">Oda Zangu</h2>
+  </div>
+
+  <div class="container" style="padding-bottom:6px;">
+    <div style="height:1px;"></div>
+  </div>
+
+  <div id="ordersList" class="stagger"></div>
+
+</div>
+
+<div class="bottom-nav">
+  <a href="home.html"><span class="ic">🏠</span>Nyumbani</a>
+  <a href="orders.html" class="active"><span class="ic">🧾</span>Oda Zangu</a>
+  <a href="cart.html"><span class="ic">🛒</span>Kikapu <span data-cart-badge style="display:none;background:var(--accent);color:#3A2200;border-radius:999px;font-size:10px;padding:1px 5px;margin-left:2px;">0</span></a>
+  <a href="../water/water-delivery.html"><span class="ic">💧</span>Maji</a>
+  <a href="profile.html"><span class="ic">👤</span>Profaili</a>
+</div>
+
+<div class="modal-bg" id="reviewModal">
+  <div class="modal-sheet">
+    <h3 style="font-size:16px; text-align:center;">Toa Rating na Review</h3>
+    <p class="muted" style="text-align:center;" id="reviewRestName"></p>
+    <input type="hidden" id="reviewOrderCode">
+    <input type="hidden" id="reviewRestId">
+    <input type="hidden" id="reviewStars" value="0">
+    <div class="star-picker" id="starPicker">
+      <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+    </div>
+    <div class="field"><textarea id="reviewComment" rows="3" placeholder="Maoni yako kuhusu chakula/huduma (hiari)"></textarea></div>
+    <div class="row gap-12">
+      <button class="btn btn-outline btn-block" onclick="closeReviewModal()">Ghairi</button>
+      <button class="btn btn-primary btn-block" onclick="submitReview()">Tuma Review</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/super-admin.js"></script>
+<script>
+function statusBadgeClass(s){
+  if(s === "delivered") return "badge-success";
+  if(s === "cancelled") return "badge-alert";
+  if(s === "pending_verification") return "badge-warn";
+  return "badge-primary";
+}
+function statusLabel(s){
+  const map = {
+    pending_verification: "Inasubiri Uthibitisho", payment_confirmed: "Malipo Sahihi",
+    preparing: "Inaandaliwa", ready_for_pickup: "Tayari Kuchukuliwa", on_the_way: "Njiani", delivered: "Imefika", cancelled: "Imeghairiwa"
+  };
+  return map[s] || s;
+}
+
+function render(){
+  const orders = getOrders();
+  const wrap = document.getElementById("ordersList");
+  if(orders.length === 0){
+    wrap.innerHTML = `<div class="empty"><div class="ic">🧾</div>Hujafanya oda yoyote bado<div style="margin-top:14px;"><a href="home.html" class="btn btn-primary">Anza Kuagiza</a></div></div>`;
+    return;
+  }
+  wrap.innerHTML = orders.map(o => {
+    const restId = o.items[0] ? o.items[0].restaurantId : null;
+    const restName = o.items[0] ? o.items[0].restaurantName : "";
+    const canReview = o.status === "delivered" && restId && !hasReviewedOrder(o.orderCode);
+    return `
+    <div class="card order-card">
+      <a href="order-track.html?code=${o.orderCode}" style="text-decoration:none; color:inherit;">
+        <div class="top">
+          <span style="font-family:var(--font-mono); font-weight:700; font-size:13.5px;">${o.orderCode}</span>
+          <span class="badge ${statusBadgeClass(o.status)}">${statusLabel(o.status)}</span>
+        </div>
+        <div class="items">${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}</div>
+        <div class="row between">
+          <span class="muted">${new Date(o.createdAt).toLocaleDateString("sw-TZ")}</span>
+          <span style="font-weight:700; font-family:var(--font-mono);">${formatTZS(o.total)}</span>
+        </div>
+      </a>
+      ${canReview ? `<button class="btn btn-outline btn-sm review-btn" onclick="openReviewModal('${o.orderCode}','${restId}','${restName}')">⭐ Toa Rating na Review</button>` : ""}
+      ${!canReview && o.status === "delivered" && hasReviewedOrder(o.orderCode) ? `<div class="muted" style="margin-top:8px; text-align:center;">✅ Umeshatoa review kwa oda hii</div>` : ""}
+    </div>
+  `;
+  }).join("");
+}
+
+let selectedStars = 0;
+function openReviewModal(orderCode, restId, restName){
+  document.getElementById("reviewOrderCode").value = orderCode;
+  document.getElementById("reviewRestId").value = restId;
+  document.getElementById("reviewRestName").textContent = restName;
+  document.getElementById("reviewComment").value = "";
+  selectedStars = 0;
+  updateStarDisplay();
+  document.getElementById("reviewModal").classList.add("show");
+}
+function closeReviewModal(){
+  document.getElementById("reviewModal").classList.remove("show");
+}
+function updateStarDisplay(){
+  document.querySelectorAll("#starPicker span").forEach(el => {
+    el.classList.toggle("active", Number(el.dataset.star) <= selectedStars);
+  });
+}
+document.getElementById("starPicker").addEventListener("click", (e) => {
+  if(e.target.dataset.star){
+    selectedStars = Number(e.target.dataset.star);
+    updateStarDisplay();
+  }
+});
+function submitReview(){
+  if(selectedStars === 0){ showToast("Chagua nyota angalau moja", "error"); return; }
+  const orderCode = document.getElementById("reviewOrderCode").value;
+  const restId = document.getElementById("reviewRestId").value;
+  const restName = document.getElementById("reviewRestName").textContent;
+  const comment = document.getElementById("reviewComment").value.trim();
+  const guestName = localStorage.getItem("ujasi_guest_name") || "Mteja";
+
+  addReview({ orderCode, restaurantId: restId, restaurantName: restName, rating: selectedStars, comment, customerName: guestName });
+  showToast("Asante kwa review yako!", "success");
+  closeReviewModal();
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

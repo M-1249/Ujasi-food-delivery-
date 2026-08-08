@@ -1,0 +1,315 @@
+/* =====================================================
+   UJASI FOOD DELIVERY — Design System
+   Dhana: "Duka la dawa" — usafi, uaminifu, uthibitisho,
+   kama lebo ya dawa (prescription label) inayotumika
+   kwenye risiti na ufuatiliaji wa oda.
+   ===================================================== */
+
+:root{
+  /* Rangi */
+  --bg:            #FFFFFF;
+  --surface:       #F1F9F5;
+  --surface-alt:   #E3F1EA;
+  --ink:           #0B2B26;
+  --ink-soft:      #4C6961;
+  --line:          #D6E8DF;
+  --primary:       #0C6B58;
+  --primary-dark:  #083F33;
+  --primary-tint:  #DCF3EA;
+  --accent:        #FF9F1C;
+  --accent-dark:   #D9800A;
+  --alert:         #E5484D;
+  --alert-tint:    #FDE6E7;
+  --success:       #1E9E6B;
+  --success-tint:  #E1F6ED;
+  --warn:          #B8860B;
+  --warn-tint:     #FBF0D9;
+
+  /* Typography */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* Radius / Shadow */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgba(11,43,38,0.06), 0 1px 1px rgba(11,43,38,0.04);
+  --shadow-2: 0 8px 24px rgba(11,43,38,0.10);
+
+  --gap: 16px;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  padding-bottom: 84px; /* space for bottom nav */
+}
+h1,h2,h3,h4{
+  font-family: var(--font-display);
+  color: var(--primary-dark);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+p{ margin:0 0 8px 0; }
+a{ color: var(--primary); text-decoration:none; }
+img{ max-width:100%; display:block; }
+button{ font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ---------- Layout shell ---------- */
+.app-shell{
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  position: relative;
+}
+
+/* ---------- Topbar ---------- */
+.topbar{
+  position: sticky; top:0; z-index: 40;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 18px;
+  display:flex; align-items:center; gap:12px;
+}
+.topbar .brand{
+  display:flex; align-items:center; gap:8px;
+  font-family: var(--font-display); font-weight:700; font-size:17px;
+  color: var(--primary-dark);
+}
+.topbar .brand .cross{
+  width:22px; height:22px; position:relative; flex:none;
+}
+.topbar .brand .cross::before,
+.topbar .brand .cross::after{
+  content:""; position:absolute; background: var(--accent); border-radius:2px;
+}
+.topbar .brand .cross::before{ width:22px; height:6px; top:8px; left:0; }
+.topbar .brand .cross::after{ width:6px; height:22px; top:0; left:8px; }
+.topbar .back{
+  width:36px; height:36px; border-radius:var(--r-pill);
+  background: var(--surface); border:none; display:flex; align-items:center; justify-content:center;
+  font-size:18px; color: var(--primary-dark); cursor:pointer;
+}
+.topbar .spacer{ flex:1; }
+
+/* ---------- Bottom nav ---------- */
+.bottom-nav{
+  position: fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:480px;
+  background: var(--bg); border-top:1px solid var(--line);
+  display:flex; z-index:50;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+}
+.bottom-nav a{
+  flex:1; text-align:center; padding:8px 2px; border-radius: var(--r-md);
+  color: var(--ink-soft); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.bottom-nav a .ic{ font-size:19px; }
+.bottom-nav a.active{ color: var(--primary); background: var(--primary-tint); }
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  border:none; border-radius: var(--r-pill);
+  padding: 14px 22px; font-weight:600; font-size:15px; cursor:pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+  font-family: var(--font-body);
+}
+.btn:active{ transform: scale(0.98); }
+.btn-primary{ background: var(--primary); color:#fff; box-shadow: var(--shadow-1); }
+.btn-primary:hover{ background: var(--primary-dark); }
+.btn-accent{ background: var(--accent); color:#3A2200; }
+.btn-accent:hover{ background: var(--accent-dark); }
+.btn-outline{ background:transparent; border:1.5px solid var(--line); color: var(--ink); }
+.btn-outline:hover{ border-color: var(--primary); color: var(--primary); }
+.btn-block{ width:100%; }
+.btn-sm{ padding:9px 16px; font-size:13px; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* ---------- Cards ---------- */
+.card{
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-1);
+}
+.card-flat{ background: var(--surface); border-radius: var(--r-lg); padding:16px; }
+
+/* ---------- Signature: Label / Perforated ticket
+   (mtindo wa lebo ya dawa — inatumika kwenye kanuni za oda,
+   risiti, na ufuatiliaji wa malipo) ---------- */
+.label-card{
+  position: relative;
+  background: #fff;
+  border: 1.5px dashed var(--primary);
+  border-radius: var(--r-md);
+  padding: 18px 16px;
+  overflow: visible;
+}
+.label-card::before,
+.label-card::after{
+  content:""; position:absolute; width:18px; height:18px;
+  background: var(--bg); border:1.5px dashed var(--primary); border-radius:50%;
+  top:50%; transform:translateY(-50%);
+}
+.label-card::before{ left:-10px; }
+.label-card::after{ right:-10px; }
+.label-card .label-eyebrow{
+  display:flex; align-items:center; gap:6px;
+  font-family: var(--font-mono); font-size:11px; letter-spacing:.06em;
+  color: var(--primary); text-transform:uppercase; margin-bottom:8px;
+}
+.label-card .label-eyebrow .dot{ width:6px; height:6px; border-radius:50%; background: var(--accent); }
+.label-card .code{
+  font-family: var(--font-mono); font-size:20px; font-weight:700;
+  color: var(--primary-dark); letter-spacing:.03em;
+}
+
+/* ---------- Badges / Status pills ---------- */
+.badge{
+  display:inline-flex; align-items:center; gap:5px;
+  font-family: var(--font-mono); font-size:11px; font-weight:600;
+  padding:4px 10px; border-radius: var(--r-pill); text-transform:uppercase; letter-spacing:.04em;
+}
+.badge-success{ background: var(--success-tint); color: var(--success); }
+.badge-warn{ background: var(--warn-tint); color: var(--warn); }
+.badge-alert{ background: var(--alert-tint); color: var(--alert); }
+.badge-primary{ background: var(--primary-tint); color: var(--primary); }
+
+/* ---------- Forms ---------- */
+.field{ margin-bottom:14px; }
+.field label{
+  display:block; font-size:12.5px; font-weight:600; color: var(--ink-soft);
+  margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em;
+}
+.field input, .field select, .field textarea{
+  width:100%; padding:13px 14px; border-radius: var(--r-sm);
+  border:1.5px solid var(--line); background: var(--surface);
+  font-family: var(--font-body); font-size:15px; color: var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus{
+  outline:none; border-color: var(--primary); background:#fff;
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+
+/* ---------- Utility ---------- */
+.container{ padding: 16px 18px 24px; }
+.row{ display:flex; align-items:center; }
+.between{ justify-content:space-between; }
+.gap-8{ gap:8px; } .gap-12{ gap:12px; } .gap-16{ gap:16px; }
+.muted{ color: var(--ink-soft); font-size:13px; }
+.section-title{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: 22px 0 12px;
+}
+.section-title h2{ font-size:16px; }
+.section-title a{ font-size:12.5px; font-weight:600; }
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.hr{ height:1px; background: var(--line); border:none; margin: 16px 0; }
+
+/* ---------- Toast ---------- */
+#toast-host{
+  position:fixed; bottom:96px; left:50%; transform:translateX(-50%);
+  width:calc(100% - 40px); max-width:440px; z-index:99;
+  display:flex; flex-direction:column; gap:8px; pointer-events:none;
+}
+.toast{
+  background: var(--primary-dark); color:#fff; padding:12px 16px;
+  border-radius: var(--r-md); font-size:13.5px; box-shadow: var(--shadow-2);
+  opacity:0; transform: translateY(10px) scale(.98);
+  animation: toast-in .32s cubic-bezier(.16,.8,.24,1) forwards, toast-out .28s ease 2.6s forwards;
+}
+@keyframes toast-in{ to{ opacity:1; transform:translateY(0) scale(1);} }
+@keyframes toast-out{ to{ opacity:0; transform:translateY(-8px) scale(.98);} }
+
+/* ---------- Skeleton / loading shimmer ---------- */
+.skel{ background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 37%, var(--surface) 63%); background-size:400% 100%; animation: shimmer 1.3s ease infinite; border-radius: var(--r-md); }
+@keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+
+/* ---------- Page transition (mwendo wa ukurasa mzima) ---------- */
+.app-shell{ animation: page-in .38s cubic-bezier(.16,.8,.24,1) both; }
+@keyframes page-in{ from{ opacity:0; transform: translateY(6px); } to{ opacity:1; transform:none; } }
+
+/* ---------- Reveal on load ---------- */
+.reveal{ animation: reveal-up .5s cubic-bezier(.16,.8,.24,1) both; }
+@keyframes reveal-up{ from{ opacity:0; transform: translateY(14px) scale(.99);} to{ opacity:1; transform:none; } }
+.stagger > *{ animation: reveal-up .46s cubic-bezier(.16,.8,.24,1) both; }
+.stagger > *:nth-child(1){ animation-delay:.03s; }
+.stagger > *:nth-child(2){ animation-delay:.075s; }
+.stagger > *:nth-child(3){ animation-delay:.12s; }
+.stagger > *:nth-child(4){ animation-delay:.165s; }
+.stagger > *:nth-child(5){ animation-delay:.21s; }
+.stagger > *:nth-child(6){ animation-delay:.255s; }
+.stagger > *:nth-child(n+7){ animation-delay:.29s; }
+
+/* ---------- Interaction feedback (kugusa/press) ---------- */
+.card, .rest-card, .label-card, .cat-chip, .network-opt, .qty-opt{
+  transition: transform .16s cubic-bezier(.16,.8,.24,1), box-shadow .16s ease, border-color .16s ease, background .16s ease;
+}
+.rest-card:active, .card:active{ transform: scale(.985); }
+.cat-chip, .network-opt, .qty-opt{ -webkit-tap-highlight-color: transparent; }
+.cat-chip:active, .network-opt:active, .qty-opt:active{ transform: scale(.94); }
+.network-opt.selected, .qty-opt.selected{ animation: pop-select .28s cubic-bezier(.34,1.56,.64,1); }
+@keyframes pop-select{ 0%{ transform:scale(.92);} 60%{ transform:scale(1.03);} 100%{ transform:scale(1);} }
+
+/* Vitufe (buttons) — mwendo laini wa kugusa */
+.btn{ transition: transform .15s cubic-bezier(.16,.8,.24,1), box-shadow .15s ease, background .15s ease, opacity .15s ease; }
+.btn:active:not(:disabled){ transform: scale(.96); }
+
+/* Picha zinazopakia taratibu (fade-in badala ya "pop") */
+img{ animation: img-fade .35s ease both; }
+@keyframes img-fade{ from{ opacity:0; } to{ opacity:1; } }
+
+/* Badge ya "current" kwenye timeline — mpigo mdogo unaoashiria hatua ya sasa */
+.tl-step.current::before{ animation: pulse-ring 1.6s cubic-bezier(.4,0,.6,1) infinite; }
+@keyframes pulse-ring{
+  0%{ box-shadow: 0 0 0 0 rgba(255,159,28,.35); }
+  70%{ box-shadow: 0 0 0 8px rgba(255,159,28,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(255,159,28,0); }
+}
+
+/* ---------- Network chooser (Lipa Namba) ---------- */
+.network-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+.network-opt{
+  border:1.5px solid var(--line); border-radius: var(--r-md);
+  padding:12px 6px; text-align:center; cursor:pointer; background:#fff;
+  transition: border-color .15s ease, background .15s ease;
+}
+.network-opt.selected{ border-color: var(--primary); background: var(--primary-tint); }
+.network-opt .nlogo{
+  width:34px; height:34px; border-radius:50%; margin:0 auto 6px;
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--font-display); font-weight:700; font-size:13px; color:#fff;
+}
+.network-opt .nname{ font-size:11px; font-weight:600; color: var(--ink); }
+
+/* ---------- Order status timeline ---------- */
+.timeline{ position:relative; padding-left:28px; }
+.timeline::before{ content:""; position:absolute; left:9px; top:4px; bottom:4px; width:2px; background: var(--line); }
+.tl-step{ position:relative; padding-bottom:22px; }
+.tl-step:last-child{ padding-bottom:0; }
+.tl-step::before{
+  content:""; position:absolute; left:-28px; top:2px; width:18px; height:18px; border-radius:50%;
+  background: var(--surface); border:2px solid var(--line);
+}
+.tl-step.done::before{ background: var(--primary); border-color: var(--primary); }
+.tl-step.current::before{ background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--surface-alt); }
+.tl-step .tl-title{ font-weight:600; font-size:14px; }
+.tl-step .tl-time{ font-size:11.5px; color: var(--ink-soft); font-family: var(--font-mono); }
+
+/* ---------- Empty state ---------- */
+.empty{ text-align:center; padding:48px 20px; color: var(--ink-soft); }
+.empty .ic{ font-size:38px; margin-bottom:10px; }

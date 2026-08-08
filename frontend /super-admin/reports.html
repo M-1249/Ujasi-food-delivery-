@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Ripoti — Super Admin | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_superadmin_session")){
+    window.location.replace("login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/global.css">
+<style>
+  .chart-wrap{ display:flex; align-items:flex-end; gap:8px; height:160px; padding:16px 6px 0; }
+  .chart-bar{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px; }
+  .chart-bar .bar{ width:100%; max-width:34px; background: var(--primary); border-radius:6px 6px 0 0; transition: height .4s cubic-bezier(.16,.8,.24,1); }
+  .chart-bar .blabel{ font-size:10.5px; color: var(--ink-soft); }
+  .chart-bar .bval{ font-size:9.5px; font-family: var(--font-mono); color: var(--primary-dark); }
+  .rest-perf-row{ display:flex; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--line); font-size:12.5px; }
+  .rest-perf-row:last-child{ border-bottom:none; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Ripoti za Mauzo</div>
+  </div>
+
+  <div class="container reveal">
+    <h2 style="font-size:15px;">Mauzo — Siku 7 Zilizopita</h2>
+    <div class="card">
+      <div class="chart-wrap" id="chartWrap"></div>
+    </div>
+
+    <div class="section-title"><h2>Muhtasari</h2></div>
+    <div class="grid-2">
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--font-display); font-size:20px; color:var(--primary-dark);" id="weekTotal">TSh 0</div>
+        <div class="muted">Jumla ya Wiki</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--font-display); font-size:20px; color:var(--primary-dark);" id="weekAvg">TSh 0</div>
+        <div class="muted">Wastani wa Siku</div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Utendaji wa Migahawa</h2></div>
+    <div class="card" id="restPerfCard"></div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="approvals.html"><span class="ic">✅</span>Idhini</a>
+  <a href="promotions.html"><span class="ic">🎁</span>Ofa</a>
+  <a href="reviews.html"><span class="ic">⭐</span>Reviews</a>
+  <a href="reports.html" class="active"><span class="ic">📈</span>Ripoti</a>
+  <a href="settings.html"><span class="ic">⚙️</span>Mipangilio</a>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/admin-layer1.js"></script>
+<script src="../js/super-admin.js"></script>
+<script>
+function renderChart(){
+  const days = getRevenueLast7Days();
+  const max = Math.max(...days.map(d => d.total), 1);
+  document.getElementById("chartWrap").innerHTML = days.map(d => `
+    <div class="chart-bar">
+      <div class="bval">${d.total > 0 ? (d.total/1000).toFixed(0)+'k' : ''}</div>
+      <div class="bar" style="height:${Math.max((d.total / max) * 120, 3)}px;"></div>
+      <div class="blabel">${d.label}</div>
+    </div>
+  `).join("");
+
+  const total = days.reduce((s,d) => s + d.total, 0);
+  document.getElementById("weekTotal").textContent = formatTZS(total);
+  document.getElementById("weekAvg").textContent = formatTZS(Math.round(total / 7));
+}
+
+function renderRestaurantPerformance(){
+  const restaurants = getAllRestaurantProfiles();
+  const orders = getOrders().filter(o => o.status === "delivered");
+  const perf = restaurants.map(r => {
+    const restOrders = orders.filter(o => o.items.some(i => i.restaurantId === r.id));
+    const revenue = restOrders.reduce((s,o) => s + o.total, 0);
+    return { name: r.name, orders: restOrders.length, revenue };
+  }).sort((a,b) => b.revenue - a.revenue);
+
+  const card = document.getElementById("restPerfCard");
+  if(perf.length === 0){
+    card.innerHTML = `<div class="empty" style="padding:20px;">Bado hakuna data</div>`;
+    return;
+  }
+  card.innerHTML = perf.map(p => `
+    <div class="rest-perf-row">
+      <span>${p.name}</span>
+      <span><b>${formatTZS(p.revenue)}</b> · ${p.orders} oda</span>
+    </div>
+  `).join("");
+}
+
+renderChart();
+renderRestaurantPerformance();
+</script>
+</body>
+</html>
