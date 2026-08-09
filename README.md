@@ -56,44 +56,79 @@ na paneli husika, mtumiaji anatolewa nje papo hapo
 haiwezi kuwa na `role` mbili — mtu anayehitaji majukumu mawili (mfano
 Rider NA Mmiliki wa Mgahawa) lazima atumie barua pepe mbili tofauti.
 
-## Muundo wa Folda
+## Muundo wa Folda — SASA NI BAPA (FLAT) KABISA
+
+**MUHIMU: Toleo hili halina folda za ndani za HTML kabisa (hakuna
+`customer/`, `auth/`, `restaurant-admin/`, n.k.) — kila ukurasa wa HTML
+uko moja kwa moja kwenye mzizi wa repo, na jina lake linaonyesha sehemu
+yake (`customer-`, `restaurant-`, `rider-`, `adminlayer1-`,
+`superadmin-`).** Hii ni kwa makusudi: muundo wa folda nyingi za ndani
+ulikuwa unasababisha faili kupotea kimya wakati wa kunakili kwa mkono
+kwenye Spck (Android Scoped Storage + kunakili folda kwa folda kwa
+mkono). Muundo bapa unaondoa hatari hiyo kabisa — faili 58 zote ziko
+ngazi moja, rahisi kunakili/kuangalia zote kwa mara moja.
+
+Folda pekee zilizobaki ni za **assets** (`css/`, `js/`, `icons/`) — hizi
+hazina hatari ya kupotea kwa sababu hazibadiliki mara kwa mara na ni
+chache.
 
 ```
-frontend/                     ← hii ndiyo publish root (Netlify)
-├── index.html                ← Splash / Landing
-├── css/global.css            ← Design system nzima (rangi, vitufe, kadi, n.k.)
-├── js/
-│   ├── firebase-config.js    ← WEKA funguo zako za Firebase hapa
-│   ├── app.js                ← Vitendo vya pamoja: toast, kikapu, oda, anwani
-│   └── data.js                ← Data ya mfano (migahawa/vyakula) - demo tu
-├── auth/
-│   ├── login.html
-│   └── register.html
-├── customer/
-│   ├── home.html              ← Tafuta/vinjari migahawa
-│   ├── restaurant.html        ← Menyu ya mgahawa (?id=r1)
-│   ├── cart.html               ← Kikapu
-│   ├── checkout.html           ← Malipo: Lipa Namba (Vodacom/Tigo-Yas/Airtel/Halotel/TTCL)
-│   ├── order-track.html        ← Ufuatiliaji wa oda (timeline)
-│   ├── orders.html             ← Historia ya oda
-│   ├── receipt.html            ← Risiti (mtindo wa lebo ya dawa)
-│   ├── profile.html
-│   ├── addresses.html
-│   └── notifications.html
-└── water/
-    └── water-delivery.html     ← Huduma maalum: Maji safi, delivery bure
+(mzizi wa repo)
+├── index.html                      ← Splash / Landing
+├── 404.html
+├── manifest.json, service-worker.js ← PWA
+├── robots.txt, sitemap.xml, firestore.rules
+├── css/global.css
+├── js/  (app.js, data.js, firebase-config.js, location.js,
+│        admin-layer1.js, restaurant-admin.js, rider.js, super-admin.js)
+├── icons/  (icon-192.png, icon-512.png, icon-maskable-512.png)
+│
+├── customer-login.html, customer-register.html      ← (zamani: auth/)
+├── customer-home.html, customer-restaurant.html,
+│   customer-cart.html, customer-checkout.html,
+│   customer-order-track.html, customer-orders.html,
+│   customer-receipt.html, customer-profile.html,
+│   customer-addresses.html, customer-notifications.html,
+│   customer-promotions.html                          ← (zamani: customer/)
+├── water-delivery.html                                ← (zamani: water/)
+│
+├── restaurant-login.html, restaurant-register.html,
+│   restaurant-dashboard.html, restaurant-orders.html,
+│   restaurant-menu.html, restaurant-profile.html       ← (zamani: restaurant-admin/)
+│
+├── rider-login.html, rider-register.html,
+│   rider-dashboard.html, rider-deliveries.html,
+│   rider-profile.html                                  ← (zamani: rider/)
+│
+├── adminlayer1-login.html, adminlayer1-dashboard.html,
+│   adminlayer1-orders.html, adminlayer1-restaurants.html,
+│   adminlayer1-riders.html, adminlayer1-settings.html   ← (zamani: admin-layer1/)
+│
+└── superadmin-login.html, superadmin-dashboard.html,
+    superadmin-approvals.html, superadmin-promotions.html,
+    superadmin-reviews.html, superadmin-reports.html,
+    superadmin-settings.html                             ← (zamani: super-admin/)
 ```
+
+**Jinsi ya kufikia kila paneli sasa** (badilisha domain yako):
+- Mteja: `yourdomain.com/index.html`
+- Mgahawa: `yourdomain.com/restaurant-login.html`
+- Rider: `yourdomain.com/rider-login.html`
+- Admin Layer 1: `yourdomain.com/adminlayer1-login.html`
+- Super Admin: `yourdomain.com/superadmin-login.html`
 
 ## Jinsi ya Kuanzisha
 
 1. **Firebase**: Fungua `js/firebase-config.js` na badilisha `firebaseConfig`
    na funguo za mradi wako halisi (Firebase Console → Project Settings).
-2. **Firestore Rules**: Hakikisha collection `users` inaruhusu kila mtumiaji
-   kusoma/kuandika hati yake mwenyewe tu (`request.auth.uid == userId`).
-3. **Netlify**: Weka *Publish directory* = `frontend`.
+2. **Firestore Rules**: Bandika `firestore.rules` kwenye Firebase Console
+   → Firestore → Rules → Publish.
+3. **Netlify/Vercel**: HAKUNA mipangilio ya "Base directory"/"Publish
+   directory"/"Root Directory" inayohitajika — acha wazi/default kabisa,
+   kwa sababu faili hizi ZENYEWE ndizo mzizi wa repo.
 4. **Spck Editor / mobile**: Faili zote ni JS ya kawaida (hakuna
    `import`/`export`), hivyo zinafanya kazi moja kwa moja kupitia
-   `<script src="...">` bila mfumo wa build — sawa na muundo wa PHARMAVERSE.
+   `<script src="...">` bila mfumo wa build.
 
 ## Marekebisho ya Hivi Karibuni
 
@@ -318,14 +353,14 @@ usalama, kwani hawa wana madaraka makubwa).
 
 ### Kupandisha (Deploy) kwenye Vercel
 
-1. Pakia folda `frontend/` kwenye GitHub repo (au tumia Vercel CLI:
-   `vercel --prod` ukiwa ndani ya folda ya mradi).
+1. Pakia MAUDHUI YOTE ya mradi (index.html, css/, js/, customer/, n.k.)
+   moja kwa moja kwenye MZIZI wa GitHub repo yako — SI ndani ya folda ya
+   `frontend/` (au tumia Vercel CLI: `vercel --prod` ukiwa ndani ya
+   folda ya mradi).
 2. Kwenye Vercel Dashboard → New Project → chagua repo yako.
-3. **MUHIMU**: Weka **Root Directory** = `frontend` (kwenye "Configure
-   Project" kabla ya "Deploy") — hii ndiyo inayofanya njia zote
-   root-relative (`/manifest.json`, `/service-worker.js`, `/icons/...`,
-   `/js/...`) zifanye kazi sahihi, kwa sababu Vercel itahudumia
-   `frontend/` kama mzizi (root) wa tovuti.
+3. Framework Preset: chagua "Other". **Root Directory: acha wazi/default**
+   (hakuna haja ya kuweka chochote hapa tena, kwa kuwa mradi wenyewe
+   NDIYO mzizi wa repo sasa).
 4. Framework Preset: chagua "Other" (si React/Next.js - ni tovuti tuli
    ya HTML/CSS/JS).
 5. Build Command: acha wazi (hakuna build inayohitajika).
@@ -387,9 +422,9 @@ Screen"). Hii ni tabia ya kawaida ya PWA duniani kote, si hitilafu.
 - `js/app.js` inajisajili Service Worker kiotomatiki kwenye kila ukurasa.
 - **Muhimu**: Service Worker HAIFANYI kazi kwenye `file://` (jaribio la
   moja kwa moja kwenye Spck/simu bila seva) — inahitaji HTTPS (km. baada
-  ya Netlify deploy) au `localhost`. Njia zote za PWA ni root-relative
-  (`/service-worker.js`, `/manifest.json`), sambamba na muundo wa
-  `frontend/` kama publish root.
+  ya Netlify/Vercel deploy) au `localhost`. Njia zote za PWA ni
+  root-relative (`/service-worker.js`, `/manifest.json`) — zinafanya
+  kazi moja kwa moja kwa sababu mradi huu wenyewe ndio mzizi wa tovuti.
 - Icons za PWA (msalaba wa "duka la dawa" juu ya teal) zipo kwenye
   `icons/icon-192.png`, `icon-512.png`, na `icon-maskable-512.png`.
 

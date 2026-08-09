@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Profaili — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+<style>
+  .profile-head{ text-align:center; padding: 26px 18px 10px; }
+  .avatar{ width:74px; height:74px; border-radius:50%; background: var(--primary-tint); color: var(--primary-dark);
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:26px; font-weight:700; margin:0 auto 10px; }
+  .menu-list{ margin: 10px 18px; }
+  .menu-item{ display:flex; align-items:center; gap:12px; padding:15px 4px; border-bottom:1px solid var(--line); }
+  .menu-item .ic{ width:36px; height:36px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .menu-item .label{ flex:1; font-size:14px; font-weight:600; }
+  .menu-item .chev{ color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> UJASI</div>
+  </div>
+
+  <div class="profile-head reveal">
+    <div class="avatar" id="avatarInitials">U</div>
+    <h2 style="font-size:18px;" id="profileName">Mtumiaji</h2>
+    <p class="muted" id="profilePhone">—</p>
+  </div>
+
+  <div class="container" id="guestBanner" style="display:none; padding-top:0;">
+    <div class="label-card">
+      <div class="label-eyebrow"><span class="dot"></span> Unatumia kama Mgeni</div>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 10px;">Unaweza kuendelea kuagiza bila akaunti. Jisajili tu ukitaka kuhifadhi historia yako kwenye vifaa vingine.</p>
+      <a href="customer-register.html" class="btn btn-primary btn-sm">Jisajili (hiari)</a>
+    </div>
+  </div>
+
+  <div class="menu-list card" style="padding:6px 12px;">
+    <a href="customer-addresses.html" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">📍</div><div class="label">Anwani Zangu</div><div class="chev">›</div></div>
+    </a>
+    <a href="customer-orders.html" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">🧾</div><div class="label">Historia ya Oda</div><div class="chev">›</div></div>
+    </a>
+    <a href="water-delivery.html" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">💧</div><div class="label">Maji Safi ya Kunywa</div><div class="chev">›</div></div>
+    </a>
+    <a href="customer-promotions.html" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">🎁</div><div class="label">Ofa Maalum</div><div class="chev">›</div></div>
+    </a>
+    <a href="#" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">💳</div><div class="label">Njia za Malipo</div><div class="chev">›</div></div>
+    </a>
+    <a href="#" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">🔔</div><div class="label">Arifa</div><div class="chev">›</div></div>
+    </a>
+    <a href="#" onclick="triggerInstall(); return false;" style="text-decoration:none; color:inherit;" data-install-btn>
+      <div class="menu-item" style="background:linear-gradient(120deg, var(--accent-tint,#FFF3E0) 0%, var(--primary-tint) 100%); border-radius:var(--r-md); margin:6px 0; padding-left:10px; padding-right:10px;">
+        <div class="ic">📲</div>
+        <div class="label">Install App <span class="muted" style="font-weight:500; display:block; font-size:11px;">Sakinisha UJASI kwenye simu yako</span></div>
+        <div class="chev">›</div>
+      </div>
+    </a>
+    <a href="#" onclick="shareApp(); return false;" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">🔗</div><div class="label">Shiriki Kiungo cha UJASI</div><div class="chev">›</div></div>
+    </a>
+    <a href="#" style="text-decoration:none; color:inherit;">
+      <div class="menu-item"><div class="ic">💬</div><div class="label">Msaada / Wasiliana Nasi</div><div class="chev">›</div></div>
+    </a>
+  </div>
+
+  <div class="container">
+    <button class="btn btn-outline btn-block" id="logoutBtn">Toka (Logout)</button>
+  </div>
+
+</div>
+
+<div class="bottom-nav">
+  <a href="customer-home.html"><span class="ic">🏠</span>Nyumbani</a>
+  <a href="customer-orders.html"><span class="ic">🧾</span>Oda Zangu</a>
+  <a href="customer-cart.html"><span class="ic">🛒</span>Kikapu <span data-cart-badge style="display:none;background:var(--accent);color:#3A2200;border-radius:999px;font-size:10px;padding:1px 5px;margin-left:2px;">0</span></a>
+  <a href="water-delivery.html"><span class="ic">💧</span>Maji</a>
+  <a href="customer-profile.html" class="active"><span class="ic">👤</span>Profaili</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script>
+firebase.auth().onAuthStateChanged(function(user){
+  if(user){
+    db.collection("users").doc(user.uid).get().then(doc => {
+      const data = doc.exists ? doc.data() : { name: user.email, phone: "" };
+      document.getElementById("profileName").textContent = data.name || "Mtumiaji";
+      document.getElementById("profilePhone").textContent = data.phone || user.email || "";
+      document.getElementById("avatarInitials").textContent = (data.name || "U").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+    }).catch(err => console.error(err));
+  } else {
+    // Hakuna mtumiaji aliyeingia - endelea kama Mgeni (huduma haihitaji akaunti)
+    const savedName = localStorage.getItem("ujasi_guest_name");
+    document.getElementById("profileName").textContent = savedName || "Mgeni";
+    document.getElementById("profilePhone").textContent = savedName ? "Unatumia bila akaunti" : "Bado hujaagiza";
+    document.getElementById("avatarInitials").textContent = (savedName || "Mgeni").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+    document.getElementById("guestBanner").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "none";
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", function(){
+  firebase.auth().signOut().then(() => {
+    showToast("Umetoka kwenye akaunti", "success");
+    setTimeout(() => window.location.href = "customer-login.html", 500);
+  });
+});
+</script>
+</body>
+</html>

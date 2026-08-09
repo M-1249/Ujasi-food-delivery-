@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mipangilio — Admin Layer 1 | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_admin1_session")){
+    window.location.replace("adminlayer1-login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Mipangilio ya Malipo</div>
+  </div>
+
+  <div class="container reveal">
+    <div class="label-card" style="margin-bottom:18px;">
+      <div class="label-eyebrow"><span class="dot"></span> Muhimu</div>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:0;">
+        Namba hii ndiyo inayoonekana kwa wateja WOTE kwenye ukurasa wa
+        malipo (checkout) wakati wa kuagiza — badilisha kwa uangalifu.
+      </p>
+    </div>
+
+    <div class="field">
+      <label>Namba ya Lipa (Lipa Namba)</label>
+      <input type="text" id="pLipaNamba" placeholder="351154293">
+    </div>
+    <div class="field">
+      <label>Jina la Biashara Linaloonekana kwa Wateja</label>
+      <input type="text" id="pLipaJina" placeholder="UMOJA HISA">
+    </div>
+
+    <button class="btn btn-primary btn-block" id="saveBtn">Hifadhi Mipangilio</button>
+
+    <div class="hr"></div>
+    <div class="section-title" style="margin-top:0;"><h2>Mipangilio ya Huduma ya Maji</h2></div>
+    <div class="label-card" style="margin-bottom:14px;">
+      <div class="label-eyebrow"><span class="dot"></span> Usafirishaji</div>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:0;">
+        Usafirishaji wa maji unabaki <b>BURE</b> daima kwa wateja — hii
+        haiwezi kubadilishwa hapa (ni sera ya huduma hii maalum).
+      </p>
+    </div>
+    <div class="field">
+      <label>Bei ya Chupa Moja (Lita 20) — TSh</label>
+      <input type="number" id="pBottlePrice" placeholder="3000">
+    </div>
+    <div class="field">
+      <label>Chaguo za Idadi Zinazoonekana kwa Mteja</label>
+      <input type="text" id="pQtyOptions" placeholder="1,2,3,4,5,6">
+      <p class="muted" style="margin-top:6px;">Tenganisha na koma. Mfano: 1,2,3,4,5,6,10</p>
+    </div>
+    <button class="btn btn-primary btn-block" id="saveWaterBtn">Hifadhi Mipangilio ya Maji</button>
+
+    <div class="hr"></div>
+    <button class="btn btn-outline btn-block" style="margin-bottom:10px;" data-install-btn onclick="triggerInstall()">📲 Install App (Paneli Hii)</button>
+    <a href="adminlayer1-login.html" class="btn btn-outline btn-block" id="logoutBtn">Toka Admin Layer 1</a>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="adminlayer1-dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="adminlayer1-orders.html"><span class="ic">🧾</span>Dispatch</a>
+  <a href="adminlayer1-restaurants.html"><span class="ic">🏪</span>Migahawa</a>
+  <a href="adminlayer1-riders.html"><span class="ic">🏍️</span>Riders</a>
+  <a href="adminlayer1-settings.html" class="active"><span class="ic">⚙️</span>Mipangilio</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/admin-layer1.js"></script>
+<script>
+function load(){
+  const s = getPaymentSettings();
+  document.getElementById("pLipaNamba").value = s.lipaNamba;
+  document.getElementById("pLipaJina").value = s.lipaJina;
+
+  const w = getWaterSettings();
+  document.getElementById("pBottlePrice").value = w.bottlePrice;
+  document.getElementById("pQtyOptions").value = w.qtyOptions.join(",");
+}
+document.getElementById("saveBtn").addEventListener("click", function(){
+  const lipaNamba = document.getElementById("pLipaNamba").value.trim();
+  const lipaJina = document.getElementById("pLipaJina").value.trim();
+  if(!lipaNamba || !lipaJina){
+    showToast("Jaza namba na jina la biashara", "error");
+    return;
+  }
+  savePaymentSettings({ lipaNamba, lipaJina });
+  showToast("Mipangilio ya malipo imesasishwa", "success");
+});
+document.getElementById("saveWaterBtn").addEventListener("click", function(){
+  const price = Number(document.getElementById("pBottlePrice").value);
+  const qtyRaw = document.getElementById("pQtyOptions").value.trim();
+  const qtyOptions = qtyRaw.split(",").map(n => Number(n.trim())).filter(n => n > 0);
+  if(!price || qtyOptions.length === 0){
+    showToast("Weka bei sahihi na angalau chaguo moja la idadi", "error");
+    return;
+  }
+  saveWaterSettings({ bottlePrice: price, qtyOptions });
+  showToast("Mipangilio ya maji imesasishwa", "success");
+});
+document.getElementById("logoutBtn").addEventListener("click", function(e){
+  e.preventDefault();
+  firebase.auth().signOut().finally(() => {
+    localStorage.removeItem("ujasi_admin1_session");
+    window.location.href = "adminlayer1-login.html";
+  });
+});
+load();
+</script>
+</body>
+</html>

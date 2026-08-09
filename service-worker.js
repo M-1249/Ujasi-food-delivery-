@@ -19,7 +19,7 @@
      HAVIHIFADHIWI kabisa - lazima yabaki mapya kila wakati.
    ===================================================== */
 
-const CACHE_VERSION = "ujasi-v2";
+const CACHE_VERSION = "ujasi-v4";
 const STATIC_CACHE = CACHE_VERSION + "-static";
 const PAGES_CACHE = CACHE_VERSION + "-pages";
 

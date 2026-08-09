@@ -320,7 +320,8 @@ document.addEventListener("DOMContentLoaded", initScrollReveal);
 /* ---------- PWA: Sajili Service Worker (caching kupunguza fetch) ----------
    Hii inajisajili moja kwa moja kwenye kila ukurasa unaopakia app.js.
    Njia "/service-worker.js" ni root-relative - inafanya kazi baada ya
-   Netlify deploy (publish directory = frontend). Haifanyi kazi kwenye
+   Netlify/Vercel deploy (mzizi wa repo NDIYO mzizi wa tovuti - hakuna
+   Base/Publish directory inayohitajika tena). Haifanyi kazi kwenye
    file:// (jambo la kawaida - Service Workers zinahitaji https/localhost),
    hivyo hairudishi kosa linaloonekana kwa mtumiaji. */
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
@@ -330,12 +331,21 @@ if("serviceWorker" in navigator && (location.protocol === "https:" || location.h
   });
 }
 
-/* ---------- PWA: Weka <link rel="manifest"> kiotomatiki kwenye kila ukurasa ---------- */
+/* ---------- PWA: Weka <link rel="manifest"> sahihi kwa kila paneli ----------
+   Kila sehemu (Mteja, Mgahawa, Rider, Admin Layer 1, Super Admin) ina
+   manifest yake YENYEWE (jina tofauti + start_url tofauti), ili
+   mtu akisakinisha "app" kutoka ukurasa wake, aikoni yake IMFUNGULIE
+   MOJA KWA MOJA dashibodi yake mwenyewe - siyo ukurasa wa mteja. */
 (function ensureManifestLink(){
-  if(!document.querySelector('link[rel="manifest"]')){
-    const link = document.createElement("link");
-    link.rel = "manifest";
-    link.href = "/manifest.json";
-    document.head.appendChild(link);
-  }
+  if(document.querySelector('link[rel="manifest"]')) return;
+  const file = window.location.pathname.split("/").pop() || "index.html";
+  let manifestFile = "/manifest.json"; // default: Mteja
+  if(file.startsWith("restaurant-")) manifestFile = "/manifest-restaurant.json";
+  else if(file.startsWith("rider-")) manifestFile = "/manifest-rider.json";
+  else if(file.startsWith("adminlayer1-")) manifestFile = "/manifest-adminlayer1.json";
+  else if(file.startsWith("superadmin-")) manifestFile = "/manifest-superadmin.json";
+  const link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = manifestFile;
+  document.head.appendChild(link);
 })();

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Profaili — Mgahawa | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_restaurant_session")){
+    window.location.replace("restaurant-login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Profaili ya Mgahawa</div>
+  </div>
+
+  <div class="container reveal">
+    <div class="card" style="text-align:center; margin-bottom:18px;">
+      <div style="width:64px; height:64px; border-radius:50%; background:var(--primary-tint); color:var(--primary-dark); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:22px; font-weight:700; margin:0 auto 10px;" id="logoInitials">MK</div>
+      <div style="font-weight:700; font-size:16px;" id="nameDisplay">Mgahawa Wangu</div>
+      <div class="muted" id="catDisplay">Kienyeji</div>
+    </div>
+
+    <div class="field">
+      <label>Jina la Mgahawa</label>
+      <input type="text" id="pName">
+    </div>
+    <div class="field">
+      <label>Aina ya Chakula</label>
+      <select id="pCategory">
+        <option>Kienyeji</option><option>Kuku</option><option>Nyama Choma</option>
+        <option>Samaki</option><option>Vitafunwa</option><option>Vinywaji</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Kiungo cha Picha ya Jalada (URL)</label>
+      <input type="text" id="pCover">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Ada ya Usafirishaji (TSh)</label>
+        <input type="number" id="pFee">
+      </div>
+      <div class="field">
+        <label>Muda wa Kuandaa</label>
+        <input type="text" id="pPrepTime" placeholder="20-30 dk">
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="saveBtn">Hifadhi Mabadiliko</button>
+
+    <div class="hr"></div>
+    <button class="btn btn-outline btn-block" style="margin-bottom:10px;" data-install-btn onclick="triggerInstall()">📲 Install App (Paneli Hii)</button>
+    <a href="restaurant-login.html" class="btn btn-outline btn-block" id="logoutBtn">Toka Paneli ya Mgahawa</a>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="restaurant-dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="restaurant-orders.html"><span class="ic">🧾</span>Oda</a>
+  <a href="restaurant-menu.html"><span class="ic">🍽️</span>Menyu</a>
+  <a href="restaurant-profile.html" class="active"><span class="ic">🏪</span>Profaili</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/data.js"></script>
+<script src="js/restaurant-admin.js"></script>
+<script>
+function loadProfile(){
+  const p = getRestaurantProfile();
+  document.getElementById("nameDisplay").textContent = p.name;
+  document.getElementById("catDisplay").textContent = p.category;
+  document.getElementById("logoInitials").textContent = (p.logo || p.name || "MW").slice(0,2).toUpperCase();
+  document.getElementById("pName").value = p.name;
+  document.getElementById("pCategory").value = p.category;
+  document.getElementById("pCover").value = p.cover || "";
+  document.getElementById("pFee").value = p.deliveryFee;
+  document.getElementById("pPrepTime").value = p.prepTime;
+}
+
+document.getElementById("saveBtn").addEventListener("click", function(){
+  const p = getRestaurantProfile();
+  p.name = document.getElementById("pName").value.trim() || p.name;
+  p.category = document.getElementById("pCategory").value;
+  p.cover = document.getElementById("pCover").value.trim();
+  p.deliveryFee = Number(document.getElementById("pFee").value) || p.deliveryFee;
+  p.prepTime = document.getElementById("pPrepTime").value.trim() || p.prepTime;
+  saveRestaurantProfile(p);
+  loadProfile();
+  showToast("Profaili ya mgahawa imesasishwa", "success");
+});
+
+document.getElementById("logoutBtn").addEventListener("click", function(e){
+  e.preventDefault();
+  firebase.auth().signOut().finally(() => {
+    localStorage.removeItem("ujasi_restaurant_session");
+    window.location.href = "restaurant-login.html";
+  });
+});
+
+loadProfile();
+</script>
+</body>
+</html>

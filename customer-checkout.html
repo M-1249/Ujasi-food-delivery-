@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Malipo — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+<style>
+  body{ padding-bottom:110px; }
+  .lipa-panel{
+    margin:18px; text-align:center;
+  }
+  .lipa-panel .lipa-num{ font-family: var(--font-mono); font-size:26px; font-weight:700; color: var(--primary-dark); letter-spacing:.04em; }
+  .lipa-panel .lipa-name{ font-size:13px; color: var(--ink-soft); margin-top:2px; }
+  .copy-btn{ margin-top:10px; }
+  .place-bar{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px;
+    background:#fff; border-top:1px solid var(--line); padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+  }
+  .steps-mini{ font-size:12px; color:var(--ink-soft); margin: 4px 0 16px; }
+  .steps-mini ol{ margin:6px 0 0; padding-left:18px; }
+  .steps-mini li{ margin-bottom:4px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <button class="back" onclick="history.back()">←</button>
+    <h2 style="font-size:16px; margin:0;">Kamilisha Malipo</h2>
+  </div>
+
+  <div class="container reveal">
+
+    <div class="section-title" style="margin-top:0;"><h2>1. Taarifa Zako</h2></div>
+    <div class="field">
+      <label>Jina Lako (Mpokeaji)</label>
+      <input type="text" id="guestName" placeholder="Jina Kamili">
+    </div>
+    <p class="muted" style="margin:-6px 0 18px;">Huhitaji akaunti kuagiza — jina hili linatumika kuwasiliana na rider wako.</p>
+
+    <div class="section-title"><h2>2. Anwani ya Kufikisha</h2></div>
+    <div class="field">
+      <select id="addrSelect">
+        <option value="">-- Chagua anwani au ongeza mpya --</option>
+      </select>
+    </div>
+    <a href="customer-addresses.html" class="muted" style="font-weight:700; font-size:12.5px;">+ Ongeza anwani mpya</a>
+
+    <div class="section-title"><h2>3. Chagua Mtandao wa Lipa Namba</h2></div>
+    <div class="network-grid" id="networkGrid"></div>
+
+    <div class="lipa-panel label-card">
+      <div class="label-eyebrow"><span class="dot"></span> Namba ya Kulipia (Lipa Namba)</div>
+      <div class="lipa-num" id="lipaNumber">351154293</div>
+      <div class="lipa-name" id="lipaJina">Jina la Biashara: UMOJA HISA</div>
+      <button class="btn btn-outline btn-sm copy-btn" onclick="copyLipa()">📋 Nakili Namba</button>
+    </div>
+
+    <div class="steps-mini">
+      Jinsi ya kulipa:
+      <ol>
+        <li>Nenda kwenye menyu ya Lipa Namba/Malipo kwenye mtandao wako.</li>
+        <li>Weka namba iliyo hapo juu na kiasi cha malipo.</li>
+        <li>Thibitisha malipo, kisha weka <b>Namba ya Muamala (Transaction ID)</b> hapa chini.</li>
+      </ol>
+    </div>
+
+    <div class="section-title"><h2>4. Thibitisha Malipo</h2></div>
+    <div class="field">
+      <label>Namba ya Muamala (Transaction ID)</label>
+      <input type="text" id="txnId" placeholder="Mfano: CI240816.1234.A56789">
+    </div>
+    <div class="field">
+      <label>Maelezo ya Ziada kwa Rider (hiari)</label>
+      <textarea id="orderNote" rows="2" placeholder="Mfano: Piga simu ukifika geti"></textarea>
+    </div>
+
+    <div class="card" style="margin-top:6px;">
+      <div class="summary-row" style="display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:8px; color: var(--ink-soft);"><span>Jumla ndogo</span><span id="ckSubtotal"></span></div>
+      <div class="summary-row" style="display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:8px; color: var(--ink-soft);"><span>Ada ya Usafirishaji</span><span id="ckDelivery"></span></div>
+      <div class="summary-row" style="display:flex; justify-content:space-between; font-size:15px; font-weight:700; padding-top:10px; border-top:1px dashed var(--line);"><span>Jumla ya Malipo</span><span id="ckTotal"></span></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="place-bar">
+  <button class="btn btn-primary btn-block" id="placeOrderBtn">Thibitisha Oda →</button>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/data.js"></script>
+<script src="js/admin-layer1.js"></script>
+<script src="js/firebase-config.js" onerror="console.warn('Firebase haikupakiwa - hali ya demo tu')"></script>
+<script>
+let selectedNetwork = null;
+
+function renderNetworks(){
+  document.getElementById("networkGrid").innerHTML = MOBILE_NETWORKS.map(n => `
+    <div class="network-opt ${selectedNetwork===n.id?'selected':''}" onclick="selectNetwork('${n.id}')">
+      <div class="nlogo" style="background:${n.color};">${networkInitial(n.name)}</div>
+      <div class="nname">${n.name}</div>
+    </div>
+  `).join("");
+}
+function selectNetwork(id){
+  selectedNetwork = id;
+  renderNetworks();
+}
+
+function renderAddresses(){
+  const sel = document.getElementById("addrSelect");
+  const list = getAddresses();
+  sel.innerHTML = `<option value="">-- Chagua anwani au ongeza mpya --</option>` +
+    list.map(a => `<option value="${a.id}">${a.label} — ${a.details}</option>`).join("");
+  if(list.length) sel.selectedIndex = 1;
+}
+
+function renderSummary(){
+  const subtotal = cartSubtotal();
+  const cart = getCart();
+  const r = cart[0] ? findAnyRestaurant(cart[0].restaurantId) : null;
+  const fee = r ? r.deliveryFee : 2000;
+  document.getElementById("ckSubtotal").textContent = formatTZS(subtotal);
+  document.getElementById("ckDelivery").textContent = formatTZS(fee);
+  document.getElementById("ckTotal").textContent = formatTZS(subtotal + fee);
+  return subtotal + fee;
+}
+
+function copyLipa(){
+  const num = document.getElementById("lipaNumber").textContent;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(num).then(() => showToast("Namba imenakiliwa", "success"));
+  } else {
+    showToast("Namba: " + num);
+  }
+}
+
+document.getElementById("placeOrderBtn").addEventListener("click", function(){
+  const cart = getCart();
+  if(cart.length === 0){ showToast("Kikapu chako kipo tupu", "error"); return; }
+  const guestName = document.getElementById("guestName").value.trim();
+  if(!guestName){ showToast("Weka jina lako", "error"); return; }
+  if(!selectedNetwork){ showToast("Chagua mtandao wa Lipa Namba", "error"); return; }
+  const txnId = document.getElementById("txnId").value.trim();
+  if(!txnId){ showToast("Weka Namba ya Muamala (Transaction ID)", "error"); return; }
+  const addrSel = document.getElementById("addrSelect");
+  if(!addrSel.value){ showToast("Chagua au ongeza anwani ya kufikisha", "error"); return; }
+
+  const total = renderSummary();
+  const orderCode = generateOrderCode();
+  localStorage.setItem("ujasi_guest_name", guestName);
+  const selectedAddress = getAddresses().find(a => a.id === addrSel.value);
+
+  const order = {
+    orderCode: orderCode,
+    customerName: guestName,
+    items: cart,
+    subtotal: cartSubtotal(),
+    deliveryFee: total - cartSubtotal(),
+    total: total,
+    network: selectedNetwork,
+    txnId: txnId,
+    note: document.getElementById("orderNote").value.trim(),
+    deliveryAddress: selectedAddress || null, // snapshot kamili - ina lat/lng kwa ajili ya Admin Layer 1 kuona kwenye ramani
+    status: "pending_verification", // Rider/Admin ndiye anayethibitisha malipo kwenye backend
+    createdAt: new Date().toISOString()
+  };
+
+  // MUHIMU: Hali halisi ya malipo ("paid") HAIPASWI kuandikwa na client.
+  // Uthibitisho wa mwisho unafanywa server-side (Cloud Function/webhook)
+  // baada ya kuangalia Transaction ID dhidi ya taarifa za mtandao wa simu.
+  saveOrder(order);
+  clearCart();
+
+  showToast("Oda imetumwa — tunathibitisha malipo yako", "success");
+  setTimeout(() => window.location.href = `customer-order-track.html?code=${orderCode}`, 700);
+});
+
+renderNetworks();
+renderAddresses();
+renderSummary();
+
+const paymentSettings = getPaymentSettings();
+document.getElementById("lipaNumber").textContent = paymentSettings.lipaNamba;
+document.getElementById("lipaJina").textContent = "Jina la Biashara: " + paymentSettings.lipaJina;
+
+const savedGuestName = localStorage.getItem("ujasi_guest_name");
+if(savedGuestName) document.getElementById("guestName").value = savedGuestName;
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Fuatilia Oda — UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+<style>
+  .live-dot{ display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft); font-family:var(--font-mono); }
+  .live-dot .pulse{ width:7px; height:7px; border-radius:50%; background:var(--success); animation: pulse-ring 1.6s cubic-bezier(.4,0,.6,1) infinite; }
+  .pay-row{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px; }
+  .pay-row:last-child{ border-bottom:none; }
+  .pay-row .plabel{ color:var(--ink-soft); }
+  .pay-row .pval{ font-weight:600; }
+  .note-card{ background: var(--primary-tint); border: 1px solid var(--primary); }
+  .cancelled-banner{ background: var(--alert-tint); border: 1px solid var(--alert); text-align:center; padding:20px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <button class="back" onclick="window.location.href='customer-home.html'">←</button>
+    <h2 style="font-size:16px; margin:0;">Fuatilia Oda</h2>
+    <div class="spacer"></div>
+    <span class="live-dot" id="liveDot"><span class="pulse"></span> LIVE</span>
+    <button class="back" style="margin-left:8px;" onclick="manualRefresh()">🔄</button>
+  </div>
+
+  <div class="container reveal">
+    <div class="label-card" style="margin-bottom:20px;">
+      <div class="label-eyebrow"><span class="dot"></span> Namba ya Oda</div>
+      <div class="row between">
+        <div class="code" id="orderCode">—</div>
+        <span class="badge badge-warn" id="statusBadge">Inasubiri</span>
+      </div>
+    </div>
+
+    <div class="card" id="cancelledCard" style="display:none;"></div>
+
+    <div class="card" id="noteCard" style="display:none;"></div>
+
+    <div class="card" id="timelineCard">
+      <h3 style="font-size:14px; margin-bottom:16px;">Hatua za Oda</h3>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3 style="font-size:14px; margin-bottom:10px;">Taarifa za Malipo</h3>
+      <div id="paymentInfo"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;" id="addressCard"></div>
+
+    <div class="card" style="margin-top:14px;" id="riderCard"></div>
+
+    <a id="receiptLink" class="btn btn-outline btn-block" style="margin-top:16px;">🧾 Ona Risiti</a>
+    <a href="customer-home.html" class="btn btn-primary btn-block" style="margin-top:10px;">Rudi Nyumbani</a>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+const code = qParam("code");
+let order = code ? getOrderByCode(code) : null;
+let lastStatus = order ? order.status : null;
+
+const netMap = { vodacom:"M-Pesa (Vodacom)", tigo:"Mixx by Yas (Tigo)", airtel:"Airtel Money", halotel:"HaloPesa", ttcl:"T-Pesa (TTCL)" };
+
+const STAGES = [
+  { key: "pending_verification", label: "Oda imepokelewa" },
+  { key: "payment_confirmed", label: "Malipo yamethibitishwa" },
+  { key: "preparing", label: "Inaandaliwa" },
+  { key: "ready_for_pickup", label: "Tayari kuchukuliwa na Rider" },
+  { key: "on_the_way", label: "Rider yupo njiani" },
+  { key: "delivered", label: "Imefika" }
+];
+
+function statusLabel(s){
+  const map = {
+    pending_verification: "Inasubiri Uthibitisho",
+    payment_confirmed: "Malipo Sahihi",
+    preparing: "Inaandaliwa",
+    ready_for_pickup: "Tayari Kuchukuliwa",
+    on_the_way: "Njiani",
+    delivered: "Imefika",
+    cancelled: "Imeghairiwa"
+  };
+  return map[s] || s;
+}
+function statusBadgeClass(s){
+  if(s === "delivered") return "badge-success";
+  if(s === "cancelled") return "badge-alert";
+  if(s === "pending_verification") return "badge-warn";
+  return "badge-primary";
+}
+
+function render(){
+  if(!order){
+    document.querySelector(".container").innerHTML = `<div class="empty"><div class="ic">🔎</div>Oda haijapatikana</div>`;
+    return;
+  }
+
+  document.getElementById("orderCode").textContent = order.orderCode;
+  document.getElementById("statusBadge").textContent = statusLabel(order.status);
+  document.getElementById("statusBadge").className = "badge " + statusBadgeClass(order.status);
+  document.getElementById("receiptLink").href = `customer-receipt.html?code=${order.orderCode}`;
+
+  // --- Hali ya Kughairiwa ---
+  const cancelledCard = document.getElementById("cancelledCard");
+  const timelineCard = document.getElementById("timelineCard");
+  if(order.status === "cancelled"){
+    cancelledCard.style.display = "block";
+    cancelledCard.className = "card cancelled-banner";
+    cancelledCard.innerHTML = `
+      <div style="font-size:28px; margin-bottom:8px;">✕</div>
+      <div style="font-weight:700; font-size:14.5px; color:var(--alert);">Oda Imeghairiwa</div>
+      <div class="muted" style="margin-top:4px;">${order.adminNote || "Wasiliana na msaada wa wateja kwa maelezo zaidi."}</div>`;
+    timelineCard.style.display = "none";
+  } else {
+    cancelledCard.style.display = "none";
+    timelineCard.style.display = "block";
+  }
+
+  // --- Ujumbe kutoka kwa Mgahawa/Admin ---
+  const noteCard = document.getElementById("noteCard");
+  if(order.adminNote && order.status !== "cancelled"){
+    noteCard.style.display = "block";
+    noteCard.className = "card note-card";
+    noteCard.innerHTML = `
+      <div class="row gap-12">
+        <div style="font-size:18px;">💬</div>
+        <div>
+          <div style="font-weight:700; font-size:13px;">Ujumbe kutoka kwa Mgahawa/Msimamizi</div>
+          <div style="font-size:13px; margin-top:2px;">${order.adminNote}</div>
+        </div>
+      </div>`;
+  } else {
+    noteCard.style.display = "none";
+  }
+
+  // --- Timeline ---
+  if(order.status !== "cancelled"){
+    const currentIndex = STAGES.findIndex(s => s.key === order.status);
+    document.getElementById("timeline").innerHTML = STAGES.map((s, i) => {
+      let cls = "";
+      if(i < currentIndex) cls = "done";
+      else if(i === currentIndex) cls = "current";
+      return `
+        <div class="tl-step ${cls}">
+          <div class="tl-title">${s.label}</div>
+          <div class="tl-time">${i <= currentIndex ? "Imekamilika" : "Inasubiriwa"}</div>
+        </div>`;
+    }).join("");
+  }
+
+  // --- Taarifa za Malipo (muhimu kwa mteja kuona ID ya muamala aliyotuma) ---
+  document.getElementById("paymentInfo").innerHTML = `
+    <div class="pay-row"><span class="plabel">Jumla ya Malipo</span><span class="pval">${formatTZS(order.total)}</span></div>
+    ${order.network ? `<div class="pay-row"><span class="plabel">Mtandao</span><span class="pval">${netMap[order.network] || order.network}</span></div>` : ""}
+    ${order.txnId ? `<div class="pay-row"><span class="plabel">Namba ya Muamala</span><span class="pval">${order.txnId}</span></div>` : ""}
+    <div class="pay-row"><span class="plabel">Hali ya Malipo</span><span class="pval">${order.status === "pending_verification" ? "⏳ Inasubiri Uthibitisho" : "✅ Imethibitishwa"}</span></div>
+  `;
+
+  // --- Anwani ---
+  const addr = order.deliveryAddress;
+  const addrCard = document.getElementById("addressCard");
+  if(addr){
+    addrCard.style.display = "block";
+    const mapLink = addr.lat ? `https://www.google.com/maps?q=${addr.lat},${addr.lng}` : null;
+    addrCard.innerHTML = `
+      <div class="row gap-12">
+        <div style="width:44px; height:44px; border-radius:50%; background:var(--primary-tint); display:flex; align-items:center; justify-content:center; font-size:18px;">📍</div>
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:13.5px;">${addr.label}</div>
+          <div class="muted">${addr.details}</div>
+          ${mapLink ? `<a href="${mapLink}" target="_blank" style="font-size:12px; font-weight:700;">Fungua kwenye Google Maps →</a>` : ""}
+        </div>
+      </div>`;
+  } else {
+    addrCard.style.display = "none";
+  }
+
+  // --- Rider ---
+  const riderCard = document.getElementById("riderCard");
+  if(order.status === "cancelled"){
+    riderCard.style.display = "none";
+  } else if(order.status === "delivered"){
+    riderCard.style.display = "block";
+    riderCard.innerHTML = `
+      <div class="row gap-12">
+        <div style="width:44px; height:44px; border-radius:50%; background:var(--success-tint); display:flex; align-items:center; justify-content:center; font-size:18px;">✅</div>
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">Oda Imefika Kikamilifu</div>
+          <div class="muted">Asante kwa kuagiza na UJASI!</div>
+        </div>
+      </div>`;
+  } else if(order.riderId){
+    riderCard.style.display = "block";
+    riderCard.innerHTML = `
+      <div class="row gap-12">
+        <div style="width:44px; height:44px; border-radius:50%; background:var(--primary-tint); display:flex; align-items:center; justify-content:center; font-size:18px;">🏍️</div>
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">Rider ameshakubali oda yako</div>
+          <div class="muted">Anakuletea sasa hivi</div>
+        </div>
+      </div>`;
+  } else {
+    riderCard.style.display = "block";
+    riderCard.innerHTML = `
+      <div class="row gap-12">
+        <div style="width:44px; height:44px; border-radius:50%; background:var(--primary-tint); display:flex; align-items:center; justify-content:center; font-size:18px;">🏍️</div>
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">Rider atapangwa hivi karibuni</div>
+          <div class="muted">Utapata taarifa mara rider atakapothibitishwa</div>
+        </div>
+      </div>`;
+  }
+}
+
+/* ---------- Auto-refresh (LIVE) ----------
+   Kwa kuwa hali ya sasa (demo) inatumia localStorage badala ya
+   seva ya wakati halisi, tunachunguza mabadiliko kila baada ya
+   sekunde 4 ili mteja aone hali mpya bila kubofya "Reload" mwenyewe.
+   Baada ya Firestore kuunganishwa, hii itabadilishwa kuwa
+   onSnapshot() listener ya wakati halisi. */
+function pollForUpdates(){
+  if(!code) return;
+  const fresh = getOrderByCode(code);
+  if(fresh && JSON.stringify(fresh) !== JSON.stringify(order)){
+    const statusChanged = fresh.status !== lastStatus;
+    order = fresh;
+    lastStatus = fresh.status;
+    render();
+    if(statusChanged) showToast("Hali ya oda yako imesasishwa: " + statusLabel(fresh.status), "success");
+  }
+}
+function manualRefresh(){
+  pollForUpdates();
+  showToast("Imesasishwa", "success");
+}
+setInterval(pollForUpdates, 4000);
+
+render();
+</script>
+</body>
+</html>

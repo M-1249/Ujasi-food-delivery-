@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Idhini — Super Admin | UJASI</title>
+<meta name="theme-color" content="#0C6B58">
+<script>
+  if(!localStorage.getItem("ujasi_superadmin_session")){
+    window.location.replace("superadmin-login.html");
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+<style>
+  .tab-row{ display:flex; gap:8px; padding:14px 18px; }
+  .tab-btn{ flex:1; text-align:center; padding:10px; border-radius: var(--r-pill); border:1.5px solid var(--line); font-size:13px; font-weight:700; color: var(--ink-soft); background:#fff; cursor:pointer; }
+  .tab-btn.active{ background: var(--primary); border-color: var(--primary); color:#fff; }
+  .pend-card{ margin:0 18px 14px; }
+  .action-row{ display:flex; gap:8px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="brand"><div class="cross"></div> Idhini za Akaunti</div>
+  </div>
+
+  <div class="tab-row reveal" id="tabRow"></div>
+
+  <div id="list" class="stagger"></div>
+
+</div>
+
+<div class="bottom-nav">
+  <a href="superadmin-dashboard.html"><span class="ic">📊</span>Dashibodi</a>
+  <a href="superadmin-approvals.html" class="active"><span class="ic">✅</span>Idhini</a>
+  <a href="superadmin-promotions.html"><span class="ic">🎁</span>Ofa</a>
+  <a href="superadmin-reviews.html"><span class="ic">⭐</span>Reviews</a>
+  <a href="superadmin-reports.html"><span class="ic">📈</span>Ripoti</a>
+  <a href="superadmin-settings.html"><span class="ic">⚙️</span>Mipangilio</a>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/super-admin.js"></script>
+<script>
+let activeTab = "restaurants";
+
+function renderTabs(){
+  document.getElementById("tabRow").innerHTML = `
+    <div class="tab-btn ${activeTab==='restaurants'?'active':''}" onclick="selectTab('restaurants')">Migahawa</div>
+    <div class="tab-btn ${activeTab==='riders'?'active':''}" onclick="selectTab('riders')">Riders</div>
+  `;
+}
+function selectTab(t){ activeTab = t; renderTabs(); renderList(); }
+
+function renderList(){
+  const wrap = document.getElementById("list");
+
+  if(activeTab === "restaurants"){
+    const list = getPendingRestaurants();
+    if(list.length === 0){
+      wrap.innerHTML = `<div class="empty"><div class="ic">✅</div>Hakuna mgahawa unaosubiri idhini</div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(r => `
+      <div class="card pend-card">
+        <div class="row between">
+          <div>
+            <div style="font-weight:700; font-size:14px;">${r.name}</div>
+            <div class="muted">${r.category} · Ada: ${formatTZS(r.deliveryFee)}</div>
+          </div>
+          <span class="badge badge-warn">Inasubiri</span>
+        </div>
+        <div class="muted" style="margin-top:6px;">📞 ${r.ownerPhone || "—"} · ✉️ ${r.ownerEmail || "—"}</div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" onclick="doApproveRestaurant('${r.id}')">✔ Idhinisha</button>
+          <button class="btn btn-outline btn-sm" onclick="doRejectRestaurant('${r.id}')">✕ Kataa</button>
+        </div>
+      </div>
+    `).join("");
+  } else {
+    const list = getPendingRiders();
+    if(list.length === 0){
+      wrap.innerHTML = `<div class="empty"><div class="ic">✅</div>Hakuna rider anayesubiri idhini</div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(r => `
+      <div class="card pend-card">
+        <div class="row between">
+          <div>
+            <div style="font-weight:700; font-size:14px;">${r.name}</div>
+            <div class="muted">${r.vehicle} · ${r.plate || "—"}</div>
+          </div>
+          <span class="badge badge-warn">Inasubiri</span>
+        </div>
+        <div class="muted" style="margin-top:6px;">📞 ${r.phone || "—"}</div>
+        <div class="action-row">
+          <button class="btn btn-primary btn-sm" onclick="doApproveRider('${r.id}')">✔ Idhinisha</button>
+          <button class="btn btn-outline btn-sm" onclick="doRejectRider('${r.id}')">✕ Kataa</button>
+        </div>
+      </div>
+    `).join("");
+  }
+}
+
+function doApproveRestaurant(id){
+  approveRestaurant(id);
+  showToast("Mgahawa umeidhinishwa", "success");
+  renderList();
+}
+function doRejectRestaurant(id){
+  if(!confirm("Una uhakika unataka kukataa usajili huu?")) return;
+  rejectRestaurant(id);
+  showToast("Usajili umekataliwa", "success");
+  renderList();
+}
+function doApproveRider(id){
+  approveRider(id);
+  showToast("Rider ameidhinishwa", "success");
+  renderList();
+}
+function doRejectRider(id){
+  if(!confirm("Una uhakika unataka kukataa usajili huu?")) return;
+  rejectRider(id);
+  showToast("Usajili umekataliwa", "success");
+  renderList();
+}
+
+renderTabs();
+renderList();
+</script>
+</body>
+</html>

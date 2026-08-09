@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+  command = ""
+
+# Service Worker isihifadhiwe kwenye cache ya muda mrefu - hakikisha
+# masasisho mapya ya JS/CSS yanafika kwa watumiaji papo hapo.
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json"
