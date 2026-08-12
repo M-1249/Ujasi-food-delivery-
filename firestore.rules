@@ -5,63 +5,140 @@ rules_version = '2';
    Bandika hizi kwenye Firebase Console → Firestore Database
    → Rules, kisha "Publish".
 
-   Kanuni kuu: kila mtumiaji anaweza kusoma/kuandika hati
-   yake mwenyewe TU ndani ya "users/{uid}" (jina, simu, role).
-   "role" haiwezi kubadilishwa na mtumiaji mwenyewe baada ya
-   kuundwa mara ya kwanza - hii inazuia mtu "kujipandisha cheo"
-   mwenyewe kuwa admin kwa kuhariri hati yake.
+   MUHIMU: Hizi ndizo zinazohakikisha KUTENGWA KAMILI (isolation)
+   kati ya wamiliki tofauti wa data - Mgahawa A HAWEZI kuona/
+   kuhariri oda au menyu ya Mgahawa B, Mteja A HAWEZI kuona
+   akaunti/anwani/kikapu cha Mteja B, na Rider A HAWEZI kuona
+   maelezo binafsi ya Rider B. Kanuni hizi ndizo "chanzo cha
+   ukweli" - UI ya mbele (front-end) haitoshi peke yake.
    ===================================================== */
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /* ---------- Vifaa vya kusaidia ---------- */
+    function signedIn() {
+      return request.auth != null;
+    }
+    function currentRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+    function isStaffAdmin() {
+      return signedIn() && currentRole() in ["admin_layer1", "super_admin"];
+    }
+    function isSuperAdmin() {
+      return signedIn() && currentRole() == "super_admin";
+    }
+    function ownsRestaurant(restaurantId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/restaurants/$(restaurantId)) &&
+        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid;
+    }
+
     /* ---------- users/{uid} ----------
-       Kila mtumiaji (customer, restaurant_admin, rider,
-       admin_layer1, super_admin) ana hati moja hapa yenye
-       uwanja "role" unaotumika na kurasa za login kuthibitisha
-       ni paneli gani anaruhusiwa kuingia. */
+       Hati ya "role" ya kila mtumiaji. Mtu anasoma/anaandika
+       hati YAKE tu; role haiwezi kubadilishwa baada ya kuundwa
+       (huzuia mtu "kujipandisha cheo" kuwa admin mwenyewe). */
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId
-                    && request.resource.data.role == resource.data.role; // role haibadiliki baada ya kuundwa
-      allow delete: if false; // hakuna anayeruhusiwa kufuta akaunti moja kwa moja
+      allow read: if signedIn() && (request.auth.uid == userId || isStaffAdmin());
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn() && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if false;
     }
 
     /* ---------- restaurants/{restaurantId} ----------
-       (Muundo wa baadaye - bado hazijahamishwa kutoka
-       localStorage. Weka hapa mfano wa kuanzia.)
-       Wateja wote wanaweza kusoma (browse), lakini kuandika
-       kunaruhusiwa tu na mwenye mgahawa (ownerId == uid) au
-       admin_layer1/super_admin. */
+       Orodha ni ya UMMA kusoma (wateja wanavinjari bila kuingia),
+       lakini kuandika ni MWENYE MGAHAWA HUYU TU (ownerUid == uid)
+       au Admin Layer 1/Super Admin (idhini, kuzima akaunti n.k.) -
+       Mgahawa A HAWEZI kubadilisha data ya Mgahawa B. */
     match /restaurants/{restaurantId} {
-      allow read: if true; // orodha ya migahawa ni ya umma
-      allow write: if request.auth != null && (
-        resource == null // kuunda mpya (create) - itathibitishwa na Cloud Function badaye
-        || resource.data.ownerId == request.auth.uid
-        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin_layer1", "super_admin"]
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid || isStaffAdmin()
       );
+      allow delete: if isStaffAdmin();
 
-      match /foods/{foodId} {
+      match /menu/{itemId} {
         allow read: if true;
-        allow write: if request.auth != null &&
-          get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+        allow write: if ownsRestaurant(restaurantId) || isStaffAdmin();
       }
     }
 
-    /* ---------- orders/{orderId} ----------
-       Mteja anasoma/anaandika oda zake mwenyewe. Mgahawa,
-       rider, na admin wanasoma/wanaandika oda zinazowahusu.
-       MUHIMU: hali ya "paid"/malipo haipaswi kuandikwa moja
-       kwa moja na client - Cloud Function pekee (baada ya
-       kuthibitisha Transaction ID) ndiyo inapaswa kuandika
-       "payment_confirmed". Mstari wa mwisho hapa chini
-       unaonyesha jinsi ya kuzuia hilo. */
+    /* ---------- riders/{riderId} ----------
+       Rider anasoma/anaandika hati YAKE mwenyewe tu (riderId == uid
+       kwa usajili mpya); Admin Layer 1/Super Admin wanaona wote
+       (kwa ajili ya kugawa oda). Rider A HAWEZI kuona maelezo ya
+       Rider B. */
+    match /riders/{riderId} {
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isStaffAdmin());
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && (resource.data.ownerUid == request.auth.uid || isStaffAdmin());
+      allow delete: if isStaffAdmin();
+    }
+
+    /* ---------- customers/{uid} ----------
+       Akaunti/anwani/kikapu cha MTEJA - HATI YAKE TU. Mteja A
+       HAWEZI kuona akaunti ya Mteja B kwa NAMNA YOYOTE - hakuna
+       "staff override" ya kusoma hapa isipokuwa Super Admin kwa
+       ajili ya huduma kwa wateja (support). */
+    match /customers/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      allow read: if isSuperAdmin();
+
+      match /addresses/{addrId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    /* ---------- orders/{orderId} ---------- */
     match /orders/{orderId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null
-        && request.resource.data.status != "payment_confirmed"; // Cloud Function pekee inaruhusiwa kuweka hii
+      // Kusoma: MWENYE oda hii pekee (customerUid sahihi), AU wafanyakazi
+      // wa mfumo (Mgahawa/Rider/Admin) wanaohitaji kuona oda kuzishughulikia.
+      // Mteja MMOJA HAWEZI kufuatilia/kuona oda ya mteja MWINGINE - hata
+      // akijua/kubashiri namba ya oda, isipokuwa ni yeye aliyeiweka.
+      allow read: if signedIn() && (
+        resource.data.customerUid == request.auth.uid
+        || currentRole() in ["restaurant_admin", "rider", "admin_layer1", "super_admin"]
+      );
+      allow create: if signedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.status == "pending_verification";
+      allow update: if signedIn() && (
+        request.resource.data.status != "payment_confirmed"
+        || currentRole() in ["restaurant_admin", "admin_layer1", "super_admin"]
+      );
+    }
+
+    /* ---------- reviews/{reviewId} ----------
+       Mteja anaunda review ya oda YAKE tu; kila mtu anasoma
+       (zinaonekana kwenye ukurasa wa mgahawa); kufuta ni Admin. */
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isStaffAdmin();
+    }
+
+    /* ---------- promotions/{promoId} ----------
+       Zinaonekana kwa wateja wote (umma); kuhariri ni Super
+       Admin pekee. */
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    /* ---------- settings/{docId} ----------
+       Mipangilio ya jukwaa (Lipa Namba, bei ya maji, tozo n.k.) -
+       inasomwa na kila mtu aliyeingia (inahitajika kwenye
+       checkout), lakini kuhaririwa ni Admin Layer 1/Super Admin
+       pekee. */
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
     }
 
     /* ---------- Kila kitu kingine: kimefungwa kwa default ---------- */

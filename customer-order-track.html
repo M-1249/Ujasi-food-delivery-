@@ -60,11 +60,16 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script src="js/orders-firestore.js"></script>
 <script>
 const code = qParam("code");
-let order = code ? getOrderByCode(code) : null;
-let lastStatus = order ? order.status : null;
+let order = null;
+let lastStatus = null;
 
 const netMap = { vodacom:"M-Pesa (Vodacom)", tigo:"Mixx by Yas (Tigo)", airtel:"Airtel Money", halotel:"HaloPesa", ttcl:"T-Pesa (TTCL)" };
 
@@ -98,7 +103,7 @@ function statusBadgeClass(s){
 
 function render(){
   if(!order){
-    document.querySelector(".container").innerHTML = `<div class="empty"><div class="ic">🔎</div>Oda haijapatikana</div>`;
+    document.querySelector(".container").innerHTML = `<div class="empty"><div class="ic">🔎</div>${code ? "Inapakia oda yako..." : "Oda haijapatikana"}</div>`;
     return;
   }
 
@@ -219,28 +224,27 @@ function render(){
   }
 }
 
-/* ---------- Auto-refresh (LIVE) ----------
-   Kwa kuwa hali ya sasa (demo) inatumia localStorage badala ya
-   seva ya wakati halisi, tunachunguza mabadiliko kila baada ya
-   sekunde 4 ili mteja aone hali mpya bila kubofya "Reload" mwenyewe.
-   Baada ya Firestore kuunganishwa, hii itabadilishwa kuwa
-   onSnapshot() listener ya wakati halisi. */
-function pollForUpdates(){
-  if(!code) return;
-  const fresh = getOrderByCode(code);
-  if(fresh && JSON.stringify(fresh) !== JSON.stringify(order)){
-    const statusChanged = fresh.status !== lastStatus;
-    order = fresh;
-    lastStatus = fresh.status;
-    render();
-    if(statusChanged) showToast("Hali ya oda yako imesasishwa: " + statusLabel(fresh.status), "success");
-  }
+/* ---------- LIVE kwa kweli (Firestore onSnapshot kwenye HATI HII TU) ----------
+   Hakuna tena "polling" ya kila sekunde 4, wala kupakua oda za wateja
+   wengine - listenToOrder() inasikiliza HATI moja ya Firestore
+   (orders/{code}) moja kwa moja, hivyo mabadiliko yoyote kutoka
+   Mgahawa/Rider/Admin Layer 1 (hata kwenye kifaa TOFAUTI kabisa)
+   yanaonekana hapa papo hapo. */
+function onOrderSnapshot(fresh){
+  const statusChanged = order && fresh && fresh.status !== lastStatus;
+  order = fresh;
+  lastStatus = fresh ? fresh.status : null;
+  render();
+  if(statusChanged) showToast("Hali ya oda yako imesasishwa: " + statusLabel(fresh.status), "success");
 }
 function manualRefresh(){
-  pollForUpdates();
   showToast("Imesasishwa", "success");
 }
-setInterval(pollForUpdates, 4000);
+if(code){
+  listenToOrder(code, onOrderSnapshot, function(){
+    document.querySelector(".container").innerHTML = `<div class="empty"><div class="ic">🔒</div>Huna ruhusa ya kuona oda hii — inaweza kuwa siyo yako, au umeingia kwa akaunti tofauti.</div>`;
+  });
+}
 
 render();
 </script>

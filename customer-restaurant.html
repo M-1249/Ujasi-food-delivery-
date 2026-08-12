@@ -79,16 +79,24 @@
   </a>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
-<script src="js/data.js"></script>
-<script src="js/super-admin.js"></script>
+<script src="js/restaurants-firestore.js"></script>
+<script src="js/customer-firestore.js"></script>
+<script src="js/platform-firestore.js"></script>
 <script>
 const restId = qParam("id") || "r1";
-const rest = findAnyRestaurant(restId);
+let rest = null;
 
-if(!rest){
-  document.querySelector(".app-shell").innerHTML = `<div class="empty container"><div class="ic">😕</div>Mgahawa haujapatikana</div>`;
-} else {
+function renderRestaurantInfo(){
+  rest = findAnyRestaurant(restId);
+  if(!rest){
+    document.querySelector(".app-shell").innerHTML = `<div class="empty container"><div class="ic">😕</div>Inapakia mgahawa...</div>`;
+    return;
+  }
   document.getElementById("restCover").src = rest.cover;
   document.getElementById("restName").textContent = rest.name;
   document.getElementById("restStatus").textContent = rest.isOpen ? "Wazi" : "Imefungwa";
@@ -182,6 +190,12 @@ function updateFab(){
     fab.style.display = "none";
   }
 }
+
+renderRestaurantInfo();
+window.onUjasiRestaurantsUpdate = renderRestaurantInfo; // sasisho la LIVE (mfano: mgahawa umefunga/kufungua)
+window.onUjasiMenuUpdate = renderRestaurantInfo; // sasisho la LIVE (menyu imebadilika)
+window.onUjasiReviewsUpdate = function(){ if(rest) renderReviews(); };
+window.onUjasiCustomerUpdate = function(){ if(rest) updateFab(); }; // kikapu kimebadilika kwenye kifaa/tab nyingine
 </script>
 </body>
 </html>

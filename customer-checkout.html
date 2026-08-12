@@ -90,10 +90,15 @@
   <button class="btn btn-primary btn-block" id="placeOrderBtn">Thibitisha Oda →</button>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
-<script src="js/data.js"></script>
-<script src="js/admin-layer1.js"></script>
-<script src="js/firebase-config.js" onerror="console.warn('Firebase haikupakiwa - hali ya demo tu')"></script>
+<script src="js/restaurants-firestore.js"></script>
+<script src="js/customer-firestore.js"></script>
+<script src="js/platform-firestore.js"></script>
+<script src="js/orders-firestore.js"></script>
 <script>
 let selectedNetwork = null;
 
@@ -138,7 +143,7 @@ function copyLipa(){
   }
 }
 
-document.getElementById("placeOrderBtn").addEventListener("click", function(){
+document.getElementById("placeOrderBtn").addEventListener("click", async function(){
   const cart = getCart();
   if(cart.length === 0){ showToast("Kikapu chako kipo tupu", "error"); return; }
   const guestName = document.getElementById("guestName").value.trim();
@@ -151,11 +156,14 @@ document.getElementById("placeOrderBtn").addEventListener("click", function(){
 
   const total = renderSummary();
   const orderCode = generateOrderCode();
-  localStorage.setItem("ujasi_guest_name", guestName);
+  saveCustomerName(guestName);
   const selectedAddress = getAddresses().find(a => a.id === addrSel.value);
 
   const order = {
     orderCode: orderCode,
+    type: "food", // hutumika kutofautisha na oda za maji (routing sahihi)
+    restaurantId: cart[0].restaurantId, // uwanja wa juu - unatumika na Firestore query ya restaurant-admin
+    restaurantName: cart[0].restaurantName,
     customerName: guestName,
     items: cart,
     subtotal: cartSubtotal(),
@@ -166,29 +174,48 @@ document.getElementById("placeOrderBtn").addEventListener("click", function(){
     note: document.getElementById("orderNote").value.trim(),
     deliveryAddress: selectedAddress || null, // snapshot kamili - ina lat/lng kwa ajili ya Admin Layer 1 kuona kwenye ramani
     status: "pending_verification", // Rider/Admin ndiye anayethibitisha malipo kwenye backend
+    riderId: null,
     createdAt: new Date().toISOString()
   };
 
   // MUHIMU: Hali halisi ya malipo ("paid") HAIPASWI kuandikwa na client.
-  // Uthibitisho wa mwisho unafanywa server-side (Cloud Function/webhook)
-  // baada ya kuangalia Transaction ID dhidi ya taarifa za mtandao wa simu.
-  saveOrder(order);
-  clearCart();
-
-  showToast("Oda imetumwa — tunathibitisha malipo yako", "success");
-  setTimeout(() => window.location.href = `customer-order-track.html?code=${orderCode}`, 700);
+  // Uthibitisho wa mwisho unafanywa na Mgahawa/Admin baada ya kuangalia
+  // Transaction ID dhidi ya SMS/muamala halisi (angalia firestore.rules).
+  const btn = document.getElementById("placeOrderBtn");
+  btn.disabled = true;
+  btn.textContent = "Inatuma...";
+  try{
+    await saveOrder(order);
+    clearCart();
+    showToast("Oda imetumwa — tunathibitisha malipo yako", "success");
+    window.location.href = `customer-order-track.html?code=${orderCode}`;
+  }catch(e){
+    console.error(e);
+    showToast("Imeshindikana kutuma oda - angalia mtandao wako na jaribu tena", "error");
+    btn.disabled = false;
+    btn.textContent = "Thibitisha Oda →";
+  }
 });
 
 renderNetworks();
 renderAddresses();
 renderSummary();
 
-const paymentSettings = getPaymentSettings();
-document.getElementById("lipaNumber").textContent = paymentSettings.lipaNamba;
-document.getElementById("lipaJina").textContent = "Jina la Biashara: " + paymentSettings.lipaJina;
+function applyPaymentSettings(){
+  const paymentSettings = getPaymentSettings();
+  document.getElementById("lipaNumber").textContent = paymentSettings.lipaNamba;
+  document.getElementById("lipaJina").textContent = "Jina la Biashara: " + paymentSettings.lipaJina;
+}
+applyPaymentSettings();
+window.onUjasiSettingsUpdate = applyPaymentSettings; // MUHIMU: Lipa Namba ikibadilishwa na Admin, hapa inasasika LIVE
 
-const savedGuestName = localStorage.getItem("ujasi_guest_name");
+const savedGuestName = getCustomerName();
 if(savedGuestName) document.getElementById("guestName").value = savedGuestName;
+window.onUjasiCustomerUpdate = function(){
+  const el = document.getElementById("guestName");
+  if(el && !el.value){ const n = getCustomerName(); if(n) el.value = n; }
+  renderAddresses();
+};
 </script>
 </body>
 </html>

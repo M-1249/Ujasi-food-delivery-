@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Menyu — Mgahawa | UJASI</title>
 <meta name="theme-color" content="#0C6B58">
-<script>
-  if(!localStorage.getItem("ujasi_restaurant_session")){
-    window.location.replace("restaurant-login.html");
-  }
-</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/global.css">
 <style>
@@ -89,8 +84,13 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
-<script src="js/data.js"></script>
+<script>guardRole("restaurant_admin", "restaurant-login.html");</script>
+<script src="js/restaurants-firestore.js"></script>
 <script src="js/restaurant-admin.js"></script>
 <script>
 function renderMenu(){
@@ -140,7 +140,7 @@ function editFood(id){
   document.getElementById("modalBg").classList.add("show");
 }
 
-function saveFoodForm(){
+async function saveFoodForm(){
   const id = document.getElementById("foodId").value;
   const name = document.getElementById("fName").value.trim();
   const price = Number(document.getElementById("fPrice").value);
@@ -152,29 +152,45 @@ function saveFoodForm(){
     return;
   }
 
-  if(id){
-    updateMenuItem(id, { name, price, desc, photo });
-    showToast("Chakula kimesasishwa", "success");
-  } else {
-    addMenuItem({ name, price, desc, photo });
-    showToast("Chakula kimeongezwa", "success");
+  try{
+    if(id){
+      await updateMenuItem(id, { name, price, desc, photo });
+      showToast("Chakula kimesasishwa", "success");
+    } else {
+      await addMenuItem({ name, price, desc, photo });
+      showToast("Chakula kimeongezwa", "success");
+    }
+    closeModal();
+    renderMenu();
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kuhifadhi - jaribu tena", "error");
   }
-  closeModal();
-  renderMenu();
 }
 
-function toggleAvail(id){
-  toggleMenuAvailability(id);
-  renderMenu();
+async function toggleAvail(id){
+  try{
+    await toggleMenuAvailability(id);
+    renderMenu();
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kusasisha - jaribu tena", "error");
+  }
 }
-function removeFood(id){
+async function removeFood(id){
   if(!confirm("Una uhakika unataka kufuta chakula hiki?")) return;
-  deleteMenuItem(id);
-  renderMenu();
-  showToast("Chakula kimefutwa", "success");
+  try{
+    await deleteMenuItem(id);
+    renderMenu();
+    showToast("Chakula kimefutwa", "success");
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kufuta - jaribu tena", "error");
+  }
 }
 
 renderMenu();
+window.onUjasiMenuUpdate = renderMenu; // sasisho la LIVE (Firestore onSnapshot)
 </script>
 </body>
 </html>

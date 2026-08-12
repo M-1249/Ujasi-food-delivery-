@@ -78,20 +78,26 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script src="js/orders-firestore.js"></script>
 <script>
 const code = qParam("code");
-const order = code ? getOrderByCode(code) : null;
 const netMap = { vodacom:"M-Pesa (Vodacom)", tigo:"Mixx by Yas (Tigo)", airtel:"Airtel Money", halotel:"HaloPesa", ttcl:"T-Pesa (TTCL)" };
 function statusLabel(s){
   const map = { pending_verification:"Inasubiri Uthibitisho", payment_confirmed:"Malipo Sahihi", preparing:"Inaandaliwa", ready_for_pickup:"Tayari Kuchukuliwa", on_the_way:"Njiani", delivered:"Imefika", cancelled:"Imeghairiwa" };
   return map[s] || s;
 }
 
-if(!order){
-  document.getElementById("receiptSheet").innerHTML = `<div class="empty"><div class="ic">🧾</div>Risiti haijapatikana</div>`;
-} else {
-  document.getElementById("receiptNo").textContent = generateReceiptNumber();
+function render(order){
+  if(!order){
+    document.getElementById("receiptSheet").innerHTML = `<div class="empty"><div class="ic">🧾</div>${code ? "Inapakia risiti..." : "Risiti haijapatikana"}</div>`;
+    return;
+  }
+  document.getElementById("receiptNo").textContent = "Risiti #" + order.orderCode; // NAMBA HII HII ndiyo inayotumika kufuatilia oda (si namba tofauti/ya nasibu)
   document.getElementById("itemLines").innerHTML = order.items.map(i =>
     `<div class="r-line"><span>${i.qty}× ${i.name}</span><span>${formatTZS(i.price * i.qty)}</span></div>`
   ).join("");
@@ -105,6 +111,12 @@ if(!order){
   document.getElementById("rDate").textContent = new Date(order.createdAt).toLocaleString("sw-TZ");
   document.getElementById("rStatus").textContent = statusLabel(order.status);
   document.getElementById("rBarcode").textContent = "‖ |‖| || ‖ |||‖ | ‖‖ ||| ‖|";
+}
+render(null);
+if(code){
+  listenToOrder(code, render, function(){
+    document.getElementById("receiptSheet").innerHTML = `<div class="empty"><div class="ic">🔒</div>Huna ruhusa ya kuona risiti hii.</div>`;
+  }); // onSnapshot ya hati MOJA (orders/{code}) - haipakui oda za wengine
 }
 </script>
 </body>

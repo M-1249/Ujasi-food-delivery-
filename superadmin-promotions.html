@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Promotions — Super Admin | UJASI</title>
 <meta name="theme-color" content="#0C6B58">
-<script>
-  if(!localStorage.getItem("ujasi_superadmin_session")){
-    window.location.replace("superadmin-login.html");
-  }
-</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/global.css">
 <style>
@@ -68,7 +63,13 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script>guardRole("super_admin", "superadmin-login.html");</script>
+<script src="js/platform-firestore.js"></script>
 <script src="js/super-admin.js"></script>
 <script>
 function render(){
@@ -123,7 +124,7 @@ function editPromo(id){
   document.getElementById("modal").classList.add("show");
 }
 
-function savePromoForm(){
+async function savePromoForm(){
   const id = document.getElementById("promoId").value;
   const title = document.getElementById("pTitle").value.trim();
   if(!title){ showToast("Weka kichwa cha habari", "error"); return; }
@@ -138,20 +139,34 @@ function savePromoForm(){
     endDate: document.getElementById("pEndDate").value || null,
     active: id ? getAllPromotions().find(p => p.id === id).active : true
   };
-  savePromotion(promo);
-  showToast("Ofa imehifadhiwa", "success");
-  closeModal();
-  render();
+  try{
+    await savePromotion(promo);
+    showToast("Ofa imehifadhiwa", "success");
+    closeModal();
+    render();
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kuhifadhi - jaribu tena", "error");
+  }
 }
-function toggleActive(id){ togglePromotionActive(id); render(); }
-function removePromo(id){
+async function toggleActive(id){
+  try{ await togglePromotionActive(id); render(); }
+  catch(err){ console.error(err); showToast("Imeshindikana kusasisha - jaribu tena", "error"); }
+}
+async function removePromo(id){
   if(!confirm("Futa ofa hii?")) return;
-  deletePromotion(id);
-  showToast("Ofa imefutwa", "success");
-  render();
+  try{
+    await deletePromotion(id);
+    showToast("Ofa imefutwa", "success");
+    render();
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kufuta - jaribu tena", "error");
+  }
 }
 
 render();
+window.onUjasiPromotionsUpdate = render; // sasisho la LIVE (Firestore onSnapshot)
 </script>
 </body>
 </html>

@@ -25,6 +25,24 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// CACHE YA LOCAL (IndexedDB, SI localStorage) — inapunguza sana idadi
+// ya "reads" za Firebase: data inayoshasomwa mara moja inabaki kwenye
+// kifaa, hivyo ukurasa unapopakiwa tena (au onSnapshot inapoanzishwa
+// upya), data ya awali inaonekana MARA MOJA kutoka kwenye cache hii
+// bila kusubiri mtandao, kisha inasasishwa kimya kimya endapo kuna
+// mabadiliko halisi kwenye server.
+try{
+  db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+    if(err.code === "failed-precondition"){
+      // Tabo/dirisha zaidi ya moja ya kivinjari ziko wazi - persistence
+      // inaruhusiwa dirisha MOJA tu kwa wakati mmoja katika hali fulani.
+      console.warn("UJASI: Firestore persistence - tabo nyingine tayari inatumika:", err);
+    } else if(err.code === "unimplemented"){
+      console.warn("UJASI: kivinjari hiki hakiungi mkono Firestore offline persistence.");
+    }
+  });
+}catch(e){ console.warn("UJASI: enablePersistence haikuweza kuanzishwa:", e); }
+
 // Mipangilio ya biashara (Lipa Namba) — hizi zinapaswa kusomwa kutoka
 // koleksheni ya Firestore "settings/payment" na Super Admin, hapa ni
 // default za kuanzia (fallback) endapo mtandao/soma-data unashindwa.

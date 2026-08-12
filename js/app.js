@@ -61,46 +61,19 @@ function formatTZS(amount){
   return "TSh " + Number(amount).toLocaleString("en-TZ");
 }
 
-/* ---------- Cart (localStorage) ----------
-   Muundo: [{ id, restaurantId, restaurantName, name, price, qty, photo }] */
-const CART_KEY = "ujasi_cart_v1";
-
-function getCart(){
-  try{ return JSON.parse(localStorage.getItem(CART_KEY)) || []; }
-  catch(e){ return []; }
-}
-function saveCart(cart){
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
-  updateCartBadge();
-}
-function addToCart(item){
-  const cart = getCart();
-  const existing = cart.find(c => c.id === item.id);
-  if(existing){ existing.qty += item.qty || 1; }
-  else{ cart.push({ ...item, qty: item.qty || 1 }); }
-  saveCart(cart);
-  showToast(`${item.name} imeongezwa kwenye kikapu`, "success");
-}
-function removeFromCart(id){
-  saveCart(getCart().filter(c => c.id !== id));
-}
-function setCartQty(id, qty){
-  const cart = getCart();
-  const item = cart.find(c => c.id === id);
-  if(item){
-    item.qty = qty;
-    if(item.qty <= 0) return removeFromCart(id);
-  }
-  saveCart(cart);
-}
-function cartSubtotal(){
-  return getCart().reduce((sum, c) => sum + (c.price * c.qty), 0);
-}
-function cartCount(){
-  return getCart().reduce((sum, c) => sum + c.qty, 0);
-}
-function clearCart(){ saveCart([]); }
+/* ---------- Cart, Anwani, Oda, Migahawa ----------
+   HAZIPO TENA hapa (localStorage imeondolewa KABISA). Sasa zinatoka
+   Firestore HALISI (onSnapshot, live, cross-device):
+     - Kikapu (Cart) + Anwani  → js/customer-firestore.js
+     - Oda (Orders)            → js/orders-firestore.js
+     - Migahawa + Menyu        → js/restaurants-firestore.js
+   Faili hizi lazima zipakiwe KWENYE UKURASA unaozihitaji (baada ya
+   firebase-config.js, kabla ya restaurant-admin.js/rider.js/
+   admin-layer1.js/super-admin.js zinazotegemea baadhi ya functions
+   hizi). getAllPlatformRestaurants()/findAnyRestaurant() nazo
+   zimehamia js/restaurants-firestore.js. */
 function updateCartBadge(){
+  if(typeof cartCount !== "function") return; // ukurasa huu haujapakia customer-firestore.js (hauna kikapu)
   const badge = document.querySelectorAll("[data-cart-badge]");
   const n = cartCount();
   badge.forEach(b => {
@@ -109,80 +82,6 @@ function updateCartBadge(){
   });
 }
 document.addEventListener("DOMContentLoaded", updateCartBadge);
-
-/* ---------- Saved delivery addresses (localStorage demo) ---------- */
-const ADDR_KEY = "ujasi_addresses_v1";
-function getAddresses(){
-  try{ return JSON.parse(localStorage.getItem(ADDR_KEY)) || []; }
-  catch(e){ return []; }
-}
-function saveAddress(addr){
-  const list = getAddresses();
-  list.push({ id: "addr_" + Date.now(), ...addr });
-  localStorage.setItem(ADDR_KEY, JSON.stringify(list));
-  return list;
-}
-function deleteAddress(id){
-  const list = getAddresses().filter(a => a.id !== id);
-  localStorage.setItem(ADDR_KEY, JSON.stringify(list));
-}
-
-/* ---------- Order history (localStorage demo, hadi Firestore itakapounganishwa) ---------- */
-const ORDERS_KEY = "ujasi_orders_v1";
-function getOrders(){
-  try{ return JSON.parse(localStorage.getItem(ORDERS_KEY)) || []; }
-  catch(e){ return []; }
-}
-function saveOrder(order){
-  const list = getOrders();
-  list.unshift(order);
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(list));
-}
-function getOrderByCode(code){
-  return getOrders().find(o => o.orderCode === code);
-}
-function updateOrderStatus(code, status){
-  const list = getOrders();
-  const o = list.find(x => x.orderCode === code);
-  if(o){ o.status = status; localStorage.setItem(ORDERS_KEY, JSON.stringify(list)); }
-}
-function updateOrder(code, changes){
-  const list = getOrders();
-  const o = list.find(x => x.orderCode === code);
-  if(o){ Object.assign(o, changes); localStorage.setItem(ORDERS_KEY, JSON.stringify(list)); }
-  return o;
-}
-
-/* ---------- Migahawa Yote ya Jukwaa (demo + iliyosajiliwa upya) ----------
-   Hii inaunganisha DEMO_RESTAURANTS (js/data.js) na migahawa yoyote
-   mipya iliyosajiliwa kupitia restaurant-admin/register.html, ili
-   ionekane kwa wateja wote kwenye home.html/restaurant.html. */
-function getAllPlatformRestaurants(){
-  const list = (typeof DEMO_RESTAURANTS !== "undefined") ? DEMO_RESTAURANTS.slice() : [];
-  for(let i = 0; i < localStorage.length; i++){
-    const key = localStorage.key(i);
-    if(key && key.indexOf("ujasi_restaurant_profile_") === 0){
-      const id = key.replace("ujasi_restaurant_profile_", "");
-      if(list.some(r => r.id === id)) continue; // tayari ipo (mgahawa wa demo)
-      try{
-        const profile = JSON.parse(localStorage.getItem(key));
-        if(profile.approved === false) continue; // bado haijaidhinishwa na Super Admin
-        const menuRaw = localStorage.getItem("ujasi_menu_" + id);
-        const foods = menuRaw ? JSON.parse(menuRaw).filter(f => f.available !== false) : [];
-        list.push({
-          id, name: profile.name, category: profile.category, cover: profile.cover,
-          logo: profile.logo, rating: profile.rating || 0, reviews: profile.reviews || 0,
-          prepTime: profile.prepTime, distanceKm: profile.distanceKm || 1.5,
-          deliveryFee: profile.deliveryFee, isOpen: profile.isOpen, foods
-        });
-      }catch(e){ console.warn("Imeshindikana kusoma mgahawa", id, e); }
-    }
-  }
-  return list;
-}
-function findAnyRestaurant(id){
-  return getAllPlatformRestaurants().find(r => r.id === id);
-}
 
 /* ---------- Query param helper ---------- */
 function qParam(key){
@@ -205,6 +104,24 @@ function initScrollReveal(){
     });
   }, { threshold: 0.15 });
   items.forEach(el => io.observe(el));
+}
+/* ---------- Ulinzi wa Paneli (Role Guard) — Firebase HALISI ----------
+   Inachukua nafasi ya ile-mwanzo-kabisa localStorage guard
+   ("ujasi_xxx_session") iliyokuwa juu ya kila dashibodi. Sasa
+   inatumia Firebase Auth + Firestore users/{uid}.role moja kwa
+   moja - kuingia kwenye kifaa/kivinjari kingine (username) bado
+   kunamtambua mtumiaji sahihi kila mahali, bila localStorage. */
+function guardRole(requiredRole, loginPage){
+  auth.onAuthStateChanged(function(user){
+    if(!user){ window.location.replace(loginPage); return; }
+    db.collection("users").doc(user.uid).get().then(function(doc){
+      const data = doc.exists ? doc.data() : null;
+      if(!data || data.role !== requiredRole){
+        auth.signOut();
+        window.location.replace(loginPage);
+      }
+    }).catch(function(){ window.location.replace(loginPage); });
+  });
 }
 /* ---------- Umesahau Nenosiri (Password Reset) ----------
    Function moja inayotumika na kurasa zote 5 za login (customer,

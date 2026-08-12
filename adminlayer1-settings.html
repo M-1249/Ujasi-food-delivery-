@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Mipangilio — Admin Layer 1 | UJASI</title>
 <meta name="theme-color" content="#0C6B58">
-<script>
-  if(!localStorage.getItem("ujasi_admin1_session")){
-    window.location.replace("adminlayer1-login.html");
-  }
-</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/global.css">
 </head>
@@ -78,6 +73,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script>guardRole("admin_layer1", "adminlayer1-login.html");</script>
+<script src="js/platform-firestore.js"></script>
 <script src="js/admin-layer1.js"></script>
 <script>
 function load(){
@@ -89,17 +86,26 @@ function load(){
   document.getElementById("pBottlePrice").value = w.bottlePrice;
   document.getElementById("pQtyOptions").value = w.qtyOptions.join(",");
 }
-document.getElementById("saveBtn").addEventListener("click", function(){
+document.getElementById("saveBtn").addEventListener("click", async function(){
   const lipaNamba = document.getElementById("pLipaNamba").value.trim();
   const lipaJina = document.getElementById("pLipaJina").value.trim();
   if(!lipaNamba || !lipaJina){
     showToast("Jaza namba na jina la biashara", "error");
     return;
   }
-  savePaymentSettings({ lipaNamba, lipaJina });
-  showToast("Mipangilio ya malipo imesasishwa", "success");
+  const btn = this;
+  btn.disabled = true;
+  try{
+    await savePaymentSettings({ lipaNamba, lipaJina });
+    showToast("Mipangilio ya malipo imesasishwa", "success");
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kuhifadhi - jaribu tena", "error");
+  }finally{
+    btn.disabled = false;
+  }
 });
-document.getElementById("saveWaterBtn").addEventListener("click", function(){
+document.getElementById("saveWaterBtn").addEventListener("click", async function(){
   const price = Number(document.getElementById("pBottlePrice").value);
   const qtyRaw = document.getElementById("pQtyOptions").value.trim();
   const qtyOptions = qtyRaw.split(",").map(n => Number(n.trim())).filter(n => n > 0);
@@ -107,17 +113,26 @@ document.getElementById("saveWaterBtn").addEventListener("click", function(){
     showToast("Weka bei sahihi na angalau chaguo moja la idadi", "error");
     return;
   }
-  saveWaterSettings({ bottlePrice: price, qtyOptions });
-  showToast("Mipangilio ya maji imesasishwa", "success");
+  const btn = this;
+  btn.disabled = true;
+  try{
+    await saveWaterSettings({ bottlePrice: price, qtyOptions });
+    showToast("Mipangilio ya maji imesasishwa", "success");
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kuhifadhi - jaribu tena", "error");
+  }finally{
+    btn.disabled = false;
+  }
 });
 document.getElementById("logoutBtn").addEventListener("click", function(e){
   e.preventDefault();
   firebase.auth().signOut().finally(() => {
-    localStorage.removeItem("ujasi_admin1_session");
     window.location.href = "adminlayer1-login.html";
   });
 });
 load();
+window.onUjasiSettingsUpdate = load; // sasisho la LIVE (Firestore onSnapshot)
 </script>
 </body>
 </html>

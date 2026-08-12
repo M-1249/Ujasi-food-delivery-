@@ -62,8 +62,14 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
-<script src="js/super-admin.js"></script>
+<script src="js/customer-firestore.js"></script>
+<script src="js/platform-firestore.js"></script>
+<script src="js/orders-firestore.js"></script>
 <script>
 function statusBadgeClass(s){
   if(s === "delivered") return "badge-success";
@@ -79,14 +85,15 @@ function statusLabel(s){
   return map[s] || s;
 }
 
-function render(){
-  const orders = getOrders();
+let lastOrders = [];
+function render(orders){
+  if(orders) lastOrders = orders;
   const wrap = document.getElementById("ordersList");
-  if(orders.length === 0){
+  if(lastOrders.length === 0){
     wrap.innerHTML = `<div class="empty"><div class="ic">🧾</div>Hujafanya oda yoyote bado<div style="margin-top:14px;"><a href="customer-home.html" class="btn btn-primary">Anza Kuagiza</a></div></div>`;
     return;
   }
-  wrap.innerHTML = orders.map(o => {
+  wrap.innerHTML = lastOrders.map(o => {
     const restId = o.items[0] ? o.items[0].restaurantId : null;
     const restName = o.items[0] ? o.items[0].restaurantName : "";
     const canReview = o.status === "delivered" && restId && !hasReviewedOrder(o.orderCode);
@@ -134,21 +141,28 @@ document.getElementById("starPicker").addEventListener("click", (e) => {
     updateStarDisplay();
   }
 });
-function submitReview(){
+async function submitReview(){
   if(selectedStars === 0){ showToast("Chagua nyota angalau moja", "error"); return; }
   const orderCode = document.getElementById("reviewOrderCode").value;
   const restId = document.getElementById("reviewRestId").value;
   const restName = document.getElementById("reviewRestName").textContent;
   const comment = document.getElementById("reviewComment").value.trim();
-  const guestName = localStorage.getItem("ujasi_guest_name") || "Mteja";
+  const guestName = getCustomerName() || "Mteja";
 
-  addReview({ orderCode, restaurantId: restId, restaurantName: restName, rating: selectedStars, comment, customerName: guestName });
-  showToast("Asante kwa review yako!", "success");
-  closeReviewModal();
-  render();
+  try{
+    await addReview({ orderCode, restaurantId: restId, restaurantName: restName, rating: selectedStars, comment, customerName: guestName });
+    showToast("Asante kwa review yako!", "success");
+    closeReviewModal();
+    render();
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kutuma review - jaribu tena", "error");
+  }
 }
 
-render();
+render(lastOrders); // hali ya awali (tupu) wakati wa kupakia
+listenMyOrders(render); // sasisho la LIVE (Firestore onSnapshot, kwa oda za mimi tu)
+window.onUjasiReviewsUpdate = render; // sasisho baada ya review kutumwa (onSnapshot)
 </script>
 </body>
 </html>

@@ -120,9 +120,16 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script src="js/customer-firestore.js"></script>
+<script src="js/platform-firestore.js"></script>
 <script src="js/location.js"></script>
 <script src="js/admin-layer1.js"></script>
+<script src="js/orders-firestore.js"></script>
 <script>
 let BOTTLE_PRICE = 3000; // itasasishwa kutoka mipangilio ya Admin Layer 1 chini
 let selectedQty = 0;
@@ -224,7 +231,7 @@ function copyLipa(){
   }
 }
 
-document.getElementById("orderWaterBtn").addEventListener("click", function(){
+document.getElementById("orderWaterBtn").addEventListener("click", async function(){
   if(selectedQty === 0){ showToast("Chagua idadi ya chupa", "error"); return; }
   const guestName = document.getElementById("guestName").value.trim();
   if(!guestName){ showToast("Weka jina lako", "error"); return; }
@@ -248,9 +255,15 @@ document.getElementById("orderWaterBtn").addEventListener("click", function(){
   }
 
   const orderCode = generateOrderCode();
-  localStorage.setItem("ujasi_guest_name", guestName);
+  saveCustomerName(guestName);
   const order = {
     orderCode: orderCode,
+    type: "water", // MUHIMU: hii ndiyo inayotenganisha oda za maji - hazina
+                    // "restaurantId" halisi, hivyo HAZIWEZI kuonekana kwenye
+                    // paneli ya Mgahawa yeyote - zinaenda MOJA KWA MOJA
+                    // kwenye foleni ya Admin Layer 1 pekee (dispatch).
+    restaurantId: "water",
+    restaurantName: "Huduma ya Maji UJASI",
     customerName: guestName,
     items: [{ id: "water20", restaurantId: "water", restaurantName: "Huduma ya Maji UJASI", name: "Maji Safi (Lita 20)", price: BOTTLE_PRICE, qty: selectedQty, photo: "" }],
     subtotal: selectedQty * BOTTLE_PRICE,
@@ -261,26 +274,48 @@ document.getElementById("orderWaterBtn").addEventListener("click", function(){
     note: "Huduma ya Maji - Delivery Bure",
     deliveryAddress: deliveryAddress,
     status: "pending_verification",
+    riderId: null,
     createdAt: new Date().toISOString()
   };
-  saveOrder(order);
-  showToast("Ombi la maji limetumwa — tunathibitisha malipo yako", "success");
-  setTimeout(() => window.location.href = `customer-order-track.html?code=${orderCode}`, 700);
+
+  const btn = document.getElementById("orderWaterBtn");
+  btn.disabled = true;
+  btn.textContent = "Inatuma...";
+  try{
+    await saveOrder(order);
+    showToast("Ombi la maji limetumwa — tunathibitisha malipo yako", "success");
+    window.location.href = `customer-order-track.html?code=${orderCode}`;
+  }catch(e){
+    console.error(e);
+    showToast("Imeshindikana kutuma ombi - angalia mtandao wako na jaribu tena", "error");
+    btn.disabled = false;
+    btn.textContent = "Agiza Maji Sasa";
+  }
 });
 
-BOTTLE_PRICE = getWaterSettings().bottlePrice;
-document.getElementById("bottlePriceLabel").textContent = formatTZS(BOTTLE_PRICE);
+function applySettings(){
+  BOTTLE_PRICE = getWaterSettings().bottlePrice;
+  document.getElementById("bottlePriceLabel").textContent = formatTZS(BOTTLE_PRICE);
+  document.getElementById("waterTotal").textContent = formatTZS(selectedQty * BOTTLE_PRICE);
+  renderQtyOptions();
 
-renderQtyOptions();
+  const paymentSettings = getPaymentSettings();
+  document.getElementById("lipaNumber").textContent = paymentSettings.lipaNamba;
+  document.getElementById("lipaJina").textContent = "Jina la Biashara: " + paymentSettings.lipaJina;
+}
+applySettings();
+window.onUjasiSettingsUpdate = applySettings; // MUHIMU: bei/Lipa Namba ikibadilishwa na Admin, hapa inasasika LIVE
+
 renderAddresses();
 renderNetworks();
 
-const paymentSettings = getPaymentSettings();
-document.getElementById("lipaNumber").textContent = paymentSettings.lipaNamba;
-document.getElementById("lipaJina").textContent = "Jina la Biashara: " + paymentSettings.lipaJina;
-
-const savedGuestName = localStorage.getItem("ujasi_guest_name");
+const savedGuestName = getCustomerName();
 if(savedGuestName) document.getElementById("guestName").value = savedGuestName;
+window.onUjasiCustomerUpdate = function(){
+  const el = document.getElementById("guestName");
+  if(el && !el.value){ const n = getCustomerName(); if(n) el.value = n; }
+  renderAddresses();
+};
 </script>
 </body>
 </html>

@@ -61,7 +61,6 @@ document.getElementById("loginForm").addEventListener("submit", function(e){
         firebase.auth().signOut();
         return;
       }
-      localStorage.setItem("ujasi_rider_session", data.riderId || "rider1");
       showToast("Umeingia — Karibu!", "success");
       setTimeout(() => window.location.href = "rider-dashboard.html", 500);
     })

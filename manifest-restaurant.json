@@ -1,0 +1,17 @@
+{
+  "name": "UJASI Mgahawa",
+  "short_name": "UJASI Mgahawa",
+  "description": "Paneli ya kusimamia mgahawa wako kwenye UJASI Food Delivery.",
+  "start_url": "/restaurant-dashboard.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F1F9F5",
+  "theme_color": "#0C6B58",
+  "lang": "sw",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

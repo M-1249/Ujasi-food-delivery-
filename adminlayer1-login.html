@@ -55,7 +55,6 @@ document.getElementById("loginForm").addEventListener("submit", function(e){
         firebase.auth().signOut();
         return;
       }
-      localStorage.setItem("ujasi_admin1_session", firebase.auth().currentUser.uid);
       showToast("Umeingia — Karibu!", "success");
       setTimeout(() => window.location.href = "adminlayer1-dashboard.html", 500);
     })

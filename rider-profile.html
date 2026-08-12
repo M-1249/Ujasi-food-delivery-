@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Profaili — Rider | UJASI</title>
 <meta name="theme-color" content="#0C6B58">
-<script>
-  if(!localStorage.getItem("ujasi_rider_session")){
-    window.location.replace("rider-login.html");
-  }
-</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/global.css">
 </head>
@@ -67,6 +62,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script>guardRole("rider", "rider-login.html");</script>
+<script src="js/riders-firestore.js"></script>
 <script src="js/rider.js"></script>
 <script>
 function loadProfile(){
@@ -81,26 +78,37 @@ function loadProfile(){
   document.getElementById("pPlate").value = p.plate;
 }
 
-document.getElementById("saveBtn").addEventListener("click", function(){
+document.getElementById("saveBtn").addEventListener("click", async function(){
   const p = getRiderProfile();
   p.name = document.getElementById("pName").value.trim() || p.name;
   p.phone = document.getElementById("pPhone").value.trim() || p.phone;
   p.vehicle = document.getElementById("pVehicle").value;
   p.plate = document.getElementById("pPlate").value.trim();
-  saveRiderProfile(p);
-  loadProfile();
-  showToast("Profaili ya rider imesasishwa", "success");
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = "Inahifadhi...";
+  try{
+    await saveRiderProfile(p);
+    loadProfile();
+    showToast("Profaili ya rider imesasishwa", "success");
+  }catch(err){
+    console.error(err);
+    showToast("Imeshindikana kuhifadhi - jaribu tena", "error");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Hifadhi Mabadiliko";
+  }
 });
 
 document.getElementById("logoutBtn").addEventListener("click", function(e){
   e.preventDefault();
   firebase.auth().signOut().finally(() => {
-    localStorage.removeItem("ujasi_rider_session");
     window.location.href = "rider-login.html";
   });
 });
 
 loadProfile();
+window.onUjasiRidersUpdate = loadProfile; // sasisho la LIVE (Firestore onSnapshot)
 </script>
 </body>
 </html>

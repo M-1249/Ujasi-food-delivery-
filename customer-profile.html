@@ -91,6 +91,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script src="js/customer-firestore.js"></script>
 <script>
 firebase.auth().onAuthStateChanged(function(user){
   if(user){
@@ -102,7 +103,7 @@ firebase.auth().onAuthStateChanged(function(user){
     }).catch(err => console.error(err));
   } else {
     // Hakuna mtumiaji aliyeingia - endelea kama Mgeni (huduma haihitaji akaunti)
-    const savedName = localStorage.getItem("ujasi_guest_name");
+    const savedName = getCustomerName();
     document.getElementById("profileName").textContent = savedName || "Mgeni";
     document.getElementById("profilePhone").textContent = savedName ? "Unatumia bila akaunti" : "Bado hujaagiza";
     document.getElementById("avatarInitials").textContent = (savedName || "Mgeni").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
