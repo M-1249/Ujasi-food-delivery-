@@ -53,9 +53,31 @@ document.getElementById("loginForm").addEventListener("submit", function(e){
   const pass = document.getElementById("loginPass").value;
 
   firebase.auth().signInWithEmailAndPassword(email, pass)
-    .then((cred) => db.collection("users").doc(cred.user.uid).get())
-    .then((doc) => {
-      const data = doc.exists ? doc.data() : null;
+    .then((cred) => db.collection("users").doc(cred.user.uid).get()
+      .then((doc) => {
+        const data = doc.exists ? doc.data() : null;
+        if(data && data.role === "restaurant_admin") return data;
+
+        // JIREKEBISHE: pengine akaunti ya Auth na hati ya mgahawa
+        // ziliundwa vizuri wakati wa usajili, lakini hati ya
+        // users/{uid} (role) ilishindwa kuandikwa kwa dakika hiyo
+        // (mfano: mtandao ulikatika). Tafuta mgahawa wenye ownerUid
+        // sawa na huyu, na kama upo, tengeneza hati ya role sasa.
+        return db.collection("restaurants").doc(cred.user.uid).get().then((rDoc) => {
+          if(rDoc.exists && rDoc.data().ownerUid === cred.user.uid){
+            const r = rDoc.data();
+            const fixed = {
+              name: r.name || "", phone: r.ownerPhone || "", email: r.ownerEmail || email,
+              role: "restaurant_admin", restaurantId: cred.user.uid,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            return db.collection("users").doc(cred.user.uid).set(fixed, { merge: true }).then(() => fixed);
+          }
+          return null;
+        });
+      })
+    )
+    .then((data) => {
       if(!data || data.role !== "restaurant_admin"){
         showToast("Akaunti hii si ya Msimamizi wa Mgahawa", "error");
         firebase.auth().signOut();
@@ -66,7 +88,13 @@ document.getElementById("loginForm").addEventListener("submit", function(e){
     })
     .catch((err) => {
       console.error(err);
-      showToast("Barua pepe au nenosiri si sahihi", "error");
+      const authErrs = ["auth/wrong-password","auth/user-not-found","auth/invalid-credential","auth/invalid-email"];
+      showToast(
+        authErrs.includes(err.code)
+          ? "Barua pepe au nenosiri si sahihi"
+          : ("Hitilafu: " + (err.message || err.code || "haijulikani")),
+        "error"
+      );
     });
 });
 

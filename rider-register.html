@@ -106,7 +106,7 @@ document.getElementById("regForm").addEventListener("submit", function(e){
         "auth/weak-password": "Nenosiri ni dhaifu sana (herufi 6+).",
         "auth/invalid-email": "Barua pepe si sahihi."
       };
-      showToast(map[err.code] || "Imeshindikana kusajili. Jaribu tena.", "error");
+      showToast(map[err.code] || ("Imeshindikana kusajili: " + (err.message || err.code || "hitilafu isiyojulikana")), "error");
       btn.disabled = false;
       btn.textContent = "Sajili Kama Rider";
     });
