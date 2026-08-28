@@ -56,7 +56,7 @@
     </div>
 
     <div class="field">
-      <label>Chagua Idadi ya Chupa (Lita 20)</label>
+      <label>Chagua Idadi ya Chupa (Lita 5)</label>
       <div class="qty-options" id="qtyOptions"></div>
     </div>
 
@@ -108,7 +108,7 @@
     </div>
 
     <div class="card" style="margin:14px 0;">
-      <div class="row between"><span class="muted">Bei ya Chupa (Lita 20)</span><span style="font-weight:700;" id="bottlePriceLabel">TSh 3,000</span></div>
+      <div class="row between"><span class="muted">Bei ya Chupa (Lita 5)</span><span style="font-weight:700;" id="bottlePriceLabel">TSh 800</span></div>
       <div class="row between" style="margin-top:8px;"><span class="muted">Ada ya Usafirishaji</span><span class="badge badge-success">BURE</span></div>
       <div class="row between" style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--line);">
         <span style="font-weight:700;">Jumla</span>
@@ -131,7 +131,7 @@
 <script src="js/admin-layer1.js"></script>
 <script src="js/orders-firestore.js"></script>
 <script>
-let BOTTLE_PRICE = 3000; // itasasishwa kutoka mipangilio ya Admin Layer 1 chini
+let BOTTLE_PRICE = 800; // itasasishwa kutoka mipangilio ya Admin Layer 1 chini
 let selectedQty = 0;
 let currentLatLng = null;
 const DODOMA = { lat: -6.1630, lng: 35.7516 };
@@ -265,7 +265,7 @@ document.getElementById("orderWaterBtn").addEventListener("click", async functio
     restaurantId: "water",
     restaurantName: "Huduma ya Maji UJASI",
     customerName: guestName,
-    items: [{ id: "water20", restaurantId: "water", restaurantName: "Huduma ya Maji UJASI", name: "Maji Safi (Lita 20)", price: BOTTLE_PRICE, qty: selectedQty, photo: "" }],
+    items: [{ id: "water5", restaurantId: "water", restaurantName: "Huduma ya Maji UJASI", name: "Maji Safi (Lita 5)", price: BOTTLE_PRICE, qty: selectedQty, photo: "" }],
     subtotal: selectedQty * BOTTLE_PRICE,
     deliveryFee: 0,
     total: selectedQty * BOTTLE_PRICE,

@@ -19,7 +19,7 @@
      HAVIHIFADHIWI kabisa - lazima yabaki mapya kila wakati.
    ===================================================== */
 
-const CACHE_VERSION = "ujasi-v4";
+const CACHE_VERSION = "ujasi-v5";
 const STATIC_CACHE = CACHE_VERSION + "-static";
 const PAGES_CACHE = CACHE_VERSION + "-pages";
 
@@ -28,17 +28,26 @@ const APP_SHELL = [
   "/manifest.json",
   "/css/global.css",
   "/js/app.js",
-  "/js/data.js",
   "/js/location.js",
   "/js/admin-layer1.js",
   "/js/restaurant-admin.js",
   "/js/rider.js",
+  "/js/riders-firestore.js",
+  "/js/orders-firestore.js",
+  "/js/customer-firestore.js",
+  "/js/restaurants-firestore.js",
+  "/js/platform-firestore.js",
   "/js/super-admin.js",
   "/js/firebase-config.js",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png"
 ];
+// MUHIMU: nambari ya CACHE_VERSION LAZIMA ibadilishwe kila mara
+// unapopeleka (deploy) mabadiliko ya CSS/JS. Kubadilisha nambari hii
+// ndiko kunakolazimisha simu za watumiaji kuacha "ujasi-v4" ya zamani
+// (yenye faili/majibu ya zamani yaliyohifadhiwa, hata kama ni 404) na
+// kuchukua toleo jipya kabisa kutoka mtandaoni.
 
 // Domeni ambazo HAZIPASWI kuhifadhiwa kamwe (lazima zibaki mpya)
 const NEVER_CACHE_HOSTS = ["nominatim.openstreetmap.org", "maps.google.com", "maps.googleapis.com"];
@@ -87,13 +96,21 @@ self.addEventListener("fetch", (event) => {
   }
 
   // 2) Faili za mfumo wa ndani (same-origin static assets) - CACHE-FIRST
+  //    MUHIMU: tunahifadhi (cache.put) TU majibu yenye res.ok (200-299).
+  //    Kabla ya fix hii, jibu la 404 (mfano faili haikuwepo bado wakati
+  //    wa deploy ya awali) lingehifadhiwa MILELE, likizuia faili hiyo
+  //    kupakuliwa upya hata baada ya kuwepo kwenye seva - hii ndiyo
+  //    iliyosababisha "createNewRider is not a function" kuendelea
+  //    kutokea hata baada ya js/riders-firestore.js kuwepo kwenye site.
   if(url.origin === self.location.origin){
     event.respondWith(
       caches.match(req).then((cached) => {
         if(cached) return cached;
         return fetch(req).then((res) => {
-          const copy = res.clone();
-          caches.open(STATIC_CACHE).then((cache) => cache.put(req, copy));
+          if(res && res.ok){
+            const copy = res.clone();
+            caches.open(STATIC_CACHE).then((cache) => cache.put(req, copy));
+          }
           return res;
         });
       })
@@ -106,8 +123,10 @@ self.addEventListener("fetch", (event) => {
     caches.match(req).then((cached) => {
       const networkFetch = fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(STATIC_CACHE).then((cache) => cache.put(req, copy));
+          if(res && res.ok){
+            const copy = res.clone();
+            caches.open(STATIC_CACHE).then((cache) => cache.put(req, copy));
+          }
           return res;
         })
         .catch(() => cached);

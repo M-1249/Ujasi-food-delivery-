@@ -109,32 +109,71 @@ document.getElementById("regForm").addEventListener("submit", function(e){
   btn.disabled = true;
   btn.textContent = "Inasajili...";
 
+  // Tengeneza hati ya mgahawa (Firestore) kisha hati ya users/{uid} (role).
+  function finishRestaurantSetup(uid){
+    return createNewRestaurant(restaurantData).then((newRestaurant) =>
+      db.collection("users").doc(uid).set({
+        name: ownerName, phone: restaurantData.phone, email: email,
+        role: "restaurant_admin", restaurantId: newRestaurant.id,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      })
+    );
+  }
+
+  function onSuccess(){
+    showToast("Mgahawa umesajiliwa — Karibu!", "success");
+    setTimeout(() => window.location.href = "restaurant-dashboard.html", 700);
+  }
+  function resetBtn(){
+    btn.disabled = false;
+    btn.textContent = "Sajili Mgahawa Wangu";
+  }
+
   // 1) Tengeneza akaunti HALISI ya Firebase Auth kwa mmiliki KWANZA -
   //    UID yake ndiyo itakayotumika moja kwa moja kama restaurantId
   //    (rahisisha Security Rules + inahakikisha "restaurantId" haiwezi
   //    kugongana na mgahawa mwingine).
   firebase.auth().createUserWithEmailAndPassword(email, pass)
-    .then((cred) => createNewRestaurant(restaurantData).then((newRestaurant) =>
-      db.collection("users").doc(cred.user.uid).set({
-        name: ownerName, phone: restaurantData.phone, email: email,
-        role: "restaurant_admin", restaurantId: newRestaurant.id,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      })
-    ))
-    .then(() => {
-      showToast("Mgahawa umesajiliwa — Karibu!", "success");
-      setTimeout(() => window.location.href = "restaurant-dashboard.html", 700);
-    })
+    .then((cred) => finishRestaurantSetup(cred.user.uid).catch((err) => {
+      // Auth imefanikiwa lakini kuandika Firestore kumeshindikana
+      // (mfano: script haijapakia kwa sababu ya mtandao/muda) - RUDISHA
+      // NYUMA (futa) akaunti ya Auth mara moja, ili barua pepe hii
+      // isibaki "yatima" na mmiliki aweze kujaribu tena bila kupata
+      // "email tayari inatumika" bure.
+      return cred.user.delete().catch(() => {}).then(() => { throw err; });
+    }))
+    .then(onSuccess)
     .catch((err) => {
+      if(err && err.code === "auth/email-already-in-use"){
+        // Pengine ni akaunti "yatima" iliyobaki kutoka jaribio la
+        // zamani (Auth iliundwa lakini hati ya mgahawa haikuandikwa).
+        // Jaribu kuingia na kukamilisha usajili badala ya kumwachia
+        // mmiliki akwame.
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+          .then((cred) => db.collection("restaurants").doc(cred.user.uid).get()
+            .then((rDoc) => {
+              if(rDoc.exists){
+                showToast("Barua pepe hii tayari ina akaunti ya Mgahawa. Tafadhali ingia.", "error");
+                firebase.auth().signOut();
+                resetBtn();
+                return;
+              }
+              return finishRestaurantSetup(cred.user.uid).then(onSuccess);
+            })
+          )
+          .catch(() => {
+            showToast("Barua pepe hii tayari inatumika. Tumia nenosiri lako sahihi, au bonyeza \"Umesahau nenosiri\".", "error");
+            resetBtn();
+          });
+        return;
+      }
       console.error(err);
       const map = {
-        "auth/email-already-in-use": "Barua pepe hii tayari inatumika.",
         "auth/weak-password": "Nenosiri ni dhaifu sana (herufi 6+).",
         "auth/invalid-email": "Barua pepe si sahihi."
       };
       showToast(map[err.code] || ("Imeshindikana kusajili: " + (err.message || err.code || "hitilafu isiyojulikana")), "error");
-      btn.disabled = false;
-      btn.textContent = "Sajili Mgahawa Wangu";
+      resetBtn();
     });
 });
 </script>

@@ -86,29 +86,68 @@ document.getElementById("regForm").addEventListener("submit", function(e){
   btn.disabled = true;
   btn.textContent = "Inasajili...";
 
-  // Tengeneza akaunti HALISI ya Firebase Auth KWANZA - UID yake ndiyo
-  // itakayotumika moja kwa moja kama riderId (Firestore halisi).
-  firebase.auth().createUserWithEmailAndPassword(email, pass)
-    .then((cred) => createNewRider({ name, phone, vehicle, plate }).then((newRider) =>
-      db.collection("users").doc(cred.user.uid).set({
+  // Tengeneza hati ya rider (Firestore) kisha hati ya users/{uid} (role).
+  function finishRiderSetup(uid){
+    return createNewRider({ name, phone, vehicle, plate }).then((newRider) =>
+      db.collection("users").doc(uid).set({
         name, phone, email, role: "rider", riderId: newRider.id,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       })
-    ))
-    .then(() => {
-      showToast("Umesajiliwa! Akaunti yako inasubiri idhini ya Msimamizi.", "success");
-      setTimeout(() => window.location.href = "rider-dashboard.html", 800);
-    })
+    );
+  }
+
+  function onSuccess(){
+    showToast("Umesajiliwa! Akaunti yako inasubiri idhini ya Msimamizi.", "success");
+    setTimeout(() => window.location.href = "rider-dashboard.html", 800);
+  }
+  function resetBtn(){
+    btn.disabled = false;
+    btn.textContent = "Sajili Kama Rider";
+  }
+
+  // Tengeneza akaunti HALISI ya Firebase Auth KWANZA - UID yake ndiyo
+  // itakayotumika moja kwa moja kama riderId (Firestore halisi).
+  firebase.auth().createUserWithEmailAndPassword(email, pass)
+    .then((cred) => finishRiderSetup(cred.user.uid).catch((err) => {
+      // Auth imefanikiwa lakini kuandika Firestore kumeshindikana
+      // (mfano: script haijapakia kwa sababu ya mtandao/muda) - RUDISHA
+      // NYUMA (futa) akaunti ya Auth mara moja, ili barua pepe hii
+      // isibaki "yatima" na mtumiaji aweze kujaribu tena bila kupata
+      // "email tayari inatumika" bure.
+      return cred.user.delete().catch(() => {}).then(() => { throw err; });
+    }))
+    .then(onSuccess)
     .catch((err) => {
+      if(err && err.code === "auth/email-already-in-use"){
+        // Pengine ni akaunti "yatima" iliyobaki kutoka jaribio la
+        // zamani KABLA ya rekebisho hili la juu (Auth iliundwa lakini
+        // hati ya rider haikuandikwa). Jaribu kuingia na kukamilisha
+        // usajili badala ya kumwachia mtumiaji akwame.
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+          .then((cred) => db.collection("riders").doc(cred.user.uid).get()
+            .then((rDoc) => {
+              if(rDoc.exists){
+                showToast("Barua pepe hii tayari ina akaunti ya Rider. Tafadhali ingia.", "error");
+                firebase.auth().signOut();
+                resetBtn();
+                return;
+              }
+              return finishRiderSetup(cred.user.uid).then(onSuccess);
+            })
+          )
+          .catch(() => {
+            showToast("Barua pepe hii tayari inatumika. Tumia nenosiri lako sahihi, au bonyeza \"Umesahau nenosiri\".", "error");
+            resetBtn();
+          });
+        return;
+      }
       console.error(err);
       const map = {
-        "auth/email-already-in-use": "Barua pepe hii tayari inatumika.",
         "auth/weak-password": "Nenosiri ni dhaifu sana (herufi 6+).",
         "auth/invalid-email": "Barua pepe si sahihi."
       };
       showToast(map[err.code] || ("Imeshindikana kusajili: " + (err.message || err.code || "hitilafu isiyojulikana")), "error");
-      btn.disabled = false;
-      btn.textContent = "Sajili Kama Rider";
+      resetBtn();
     });
 });
 </script>

@@ -45,7 +45,10 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == userId || isStaffAdmin());
       allow create: if signedIn() && request.auth.uid == userId;
       allow update: if signedIn() && request.auth.uid == userId
-                    && request.resource.data.role == resource.data.role;
+                    && (
+                      !("role" in resource.data) || resource.data.role == null
+                      || request.resource.data.role == resource.data.role
+                    );
       allow delete: if false;
     }
 
@@ -94,12 +97,19 @@ service cloud.firestore {
       }
     }
 
-    /* ---------- orders/{orderId} ---------- */
+    /* ---------- orders/{orderId} ----------
+       Kusoma: MWENYE oda hii pekee (customerUid sahihi), AU wafanyakazi
+       wa mfumo (Mgahawa/Rider/Admin) wanaohitaji kuona oda kuzishughulikia.
+       Mteja MMOJA HAWEZI kufuatilia/kuona oda ya mteja MWINGINE - hata
+       akijua/kubashiri namba ya oda, isipokuwa ni yeye aliyeiweka.
+
+       Kuandika (update): MTEJA anaruhusiwa KUGHAIRI TU oda yake mwenyewe
+       (status -> "cancelled"). Mabadiliko mengine yote ya status/data
+       (thibitisha malipo, andaa, gawa rider, njiani, imefika) ni ya
+       WAFANYAKAZI wa mfumo pekee (restaurant_admin/rider/admin_layer1/
+       super_admin) - HAKUNA mtumiaji mwingine yeyote anayeweza
+       kubadilisha oda isiyo yake. */
     match /orders/{orderId} {
-      // Kusoma: MWENYE oda hii pekee (customerUid sahihi), AU wafanyakazi
-      // wa mfumo (Mgahawa/Rider/Admin) wanaohitaji kuona oda kuzishughulikia.
-      // Mteja MMOJA HAWEZI kufuatilia/kuona oda ya mteja MWINGINE - hata
-      // akijua/kubashiri namba ya oda, isipokuwa ni yeye aliyeiweka.
       allow read: if signedIn() && (
         resource.data.customerUid == request.auth.uid
         || currentRole() in ["restaurant_admin", "rider", "admin_layer1", "super_admin"]
@@ -108,8 +118,9 @@ service cloud.firestore {
         && request.resource.data.customerUid == request.auth.uid
         && request.resource.data.status == "pending_verification";
       allow update: if signedIn() && (
-        request.resource.data.status != "payment_confirmed"
-        || currentRole() in ["restaurant_admin", "admin_layer1", "super_admin"]
+        (resource.data.customerUid == request.auth.uid
+          && request.resource.data.status == "cancelled")
+        || currentRole() in ["restaurant_admin", "rider", "admin_layer1", "super_admin"]
       );
     }
 
