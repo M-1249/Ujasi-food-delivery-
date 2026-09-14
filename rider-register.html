@@ -18,7 +18,7 @@
   <div class="container reveal">
     <div class="badge badge-primary" style="margin-bottom:10px;">SAJILI KAMA RIDER</div>
     <h1 style="font-size:22px;">Karibu kwenye UJASI</h1>
-    <p class="muted" style="margin-bottom:22px;">Baada ya kusajili, akaunti yako itasubiri idhini ya Msimamizi kabla hujaanza kupokea oda.</p>
+    <p class="muted" style="margin-bottom:22px;">Jaza taarifa za msingi tu — aina ya chombo na namba ya bango utaziweka baadaye kwenye "Profaili" ukiwa umeshaingia. Baada ya kusajili, akaunti yako itasubiri idhini ya Msimamizi kabla hujaanza kupokea oda.</p>
 
     <form id="regForm">
       <div class="field">
@@ -28,18 +28,6 @@
       <div class="field">
         <label>Namba ya Simu</label>
         <input type="tel" id="rPhone" placeholder="0712 345 678" required>
-      </div>
-      <div class="grid-2">
-        <div class="field">
-          <label>Aina ya Chombo</label>
-          <select id="rVehicle">
-            <option>Pikipiki</option><option>Baiskeli</option><option>Gari</option><option>Kwa Miguu</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Namba ya Bango</label>
-          <input type="text" id="rPlate" placeholder="T 123 ABC">
-        </div>
       </div>
       <div class="field">
         <label>Barua Pepe</label>
@@ -70,10 +58,12 @@
 <script>
 document.getElementById("regForm").addEventListener("submit", function(e){
   e.preventDefault();
+
+  // Ukifika hapa ukitokea rider-login.html (akaunti "yatima" iliyogundulika
+  // wakati wa kuingia), barua pepe imeshajazwa moja kwa moja - angalia
+  // window.onload chini.
   const name = document.getElementById("rName").value.trim();
   const phone = document.getElementById("rPhone").value.trim();
-  const vehicle = document.getElementById("rVehicle").value;
-  const plate = document.getElementById("rPlate").value.trim();
   const email = document.getElementById("rEmail").value.trim();
   const pass = document.getElementById("rPass").value;
 
@@ -84,16 +74,19 @@ document.getElementById("regForm").addEventListener("submit", function(e){
 
   const btn = document.getElementById("regBtn");
   btn.disabled = true;
-  btn.textContent = "Inasajili...";
+  btn.textContent = "Inaunda akaunti…";
 
-  // Tengeneza hati ya rider (Firestore) kisha hati ya users/{uid} (role).
+  // Tengeneza hati ya rider NA hati ya users/{uid} (role) kwa ANDIKO
+  // MOJA LA "BATCH" (atomiki) - ona maelezo kwenye js/riders-firestore.js
+  // (createNewRider). Aina ya Chombo/Namba ya Bango hazipo tena hapa -
+  // zina default ("Pikipiki" / tupu) na rider anaweza kuzikamilisha
+  // baadaye kwenye rider-profile.html.
   function finishRiderSetup(uid){
-    return createNewRider({ name, phone, vehicle, plate }).then((newRider) =>
-      db.collection("users").doc(uid).set({
-        name, phone, email, role: "rider", riderId: newRider.id,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      })
-    );
+    btn.textContent = "Inahifadhi taarifa za rider…";
+    return createNewRider({ name, phone }, {
+      name, phone, email, role: "rider", riderId: uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
   }
 
   function onSuccess(){
@@ -109,8 +102,8 @@ document.getElementById("regForm").addEventListener("submit", function(e){
   // itakayotumika moja kwa moja kama riderId (Firestore halisi).
   firebase.auth().createUserWithEmailAndPassword(email, pass)
     .then((cred) => finishRiderSetup(cred.user.uid).catch((err) => {
-      // Auth imefanikiwa lakini kuandika Firestore kumeshindikana
-      // (mfano: script haijapakia kwa sababu ya mtandao/muda) - RUDISHA
+      // Auth imefanikiwa lakini batch ya Firestore imeshindikana kabisa
+      // (mfano: mtandao umekatika kabla commit haijafika server) - RUDISHA
       // NYUMA (futa) akaunti ya Auth mara moja, ili barua pepe hii
       // isibaki "yatima" na mtumiaji aweze kujaribu tena bila kupata
       // "email tayari inatumika" bure.
@@ -150,6 +143,18 @@ document.getElementById("regForm").addEventListener("submit", function(e){
       resetBtn();
     });
 });
+
+// Ukifika hapa kutoka rider-login.html (?email=...) kwa sababu akaunti
+// yako ya Auth ilikuwa "yatima" (haina hati ya rider), jaza barua pepe
+// moja kwa moja ili ujaze tu Jina/Simu/Nenosiri lililetua kutumia awali.
+(function prefillEmailFromLogin(){
+  const params = new URLSearchParams(window.location.search);
+  const email = params.get("email");
+  if(email){
+    document.getElementById("rEmail").value = email;
+    showToast("Kamilisha usajili wako hapa chini kwa barua pepe hii hii", "success");
+  }
+})();
 </script>
 </body>
 </html>

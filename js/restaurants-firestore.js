@@ -84,22 +84,40 @@
     return myRestaurantId;
   };
 
-  /* ---------- Usajili wa Mgahawa Mpya ---------- */
-  window.createNewRestaurant = async function (data) {
+  /* ---------- Usajili wa Mgahawa Mpya ----------
+     Fields za "hiari" (category, cover, fee, prepTime) sasa zina default
+     hapa moja kwa moja - fomu ya usajili (restaurant-register.html) haihitaji
+     tena kuzijaza; mmiliki anaweza kuzikamilisha baadaye kwenye
+     restaurant-profile.html akiwa amekwisha ingia. */
+  window.createNewRestaurant = async function (data, userDoc) {
     const user = await (auth.currentUser ? Promise.resolve(auth.currentUser) : new Promise((res) => {
       const unsub = auth.onAuthStateChanged((u) => { unsub(); res(u); });
     }));
     if (!user) throw new Error("Hakuna mtumiaji aliyeingia");
     const id = user.uid;
     const profile = {
-      name: data.name, category: data.category, cover: data.cover || "",
+      name: data.name, category: data.category || "Kienyeji", cover: data.cover || "",
       logo: (data.name || "MG").slice(0, 2).toUpperCase(),
       rating: 0, reviews: 0, prepTime: data.prepTime || "20-30 dk",
       deliveryFee: data.deliveryFee || 2000, isOpen: true, approved: false,
       ownerUid: id, ownerPhone: data.phone || "", ownerEmail: data.email || "",
       distanceKm: 1.5, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    await db.collection(REST_COL).doc(id).set(profile);
+    if (userDoc) {
+      // ANDIKO MOJA LA "BATCH" (atomiki): hati ya mgahawa NA hati ya
+      // users/{uid} (role) zinaandikwa kwa mkupuo mmoja badala ya
+      // maandishi mawili mfululizo (kama zamani) - hupunguza "round-trip"
+      // moja ya mtandao (muhimu kwenye mtandao wa simu usio imara) NA
+      // huondoa kabisa uwezekano wa "akaunti yatima" (moja ikifaulu na
+      // nyingine ikishindwa), kwa sababu batch ni atomiki: ama zote mbili
+      // zinafaulu, ama zote mbili zinashindwa - hakuna hali ya katikati.
+      const batch = db.batch();
+      batch.set(db.collection(REST_COL).doc(id), profile);
+      batch.set(db.collection("users").doc(id), userDoc);
+      await batch.commit();
+    } else {
+      await db.collection(REST_COL).doc(id).set(profile);
+    }
     myRestaurantId = id;
     return Object.assign({ id }, profile);
   };

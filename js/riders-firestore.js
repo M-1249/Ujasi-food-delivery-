@@ -62,8 +62,12 @@
     return myRiderId;
   };
 
-  /* ---------- Usajili wa Rider Mpya ---------- */
-  window.createNewRider = async function (data) {
+  /* ---------- Usajili wa Rider Mpya ----------
+     Fields za "hiari" (vehicle, plate) sasa zina default hapa moja kwa
+     moja - fomu ya usajili (rider-register.html) haihitaji tena kuzijaza;
+     rider anaweza kuzikamilisha baadaye kwenye rider-profile.html akiwa
+     amekwisha ingia. */
+  window.createNewRider = async function (data, userDoc) {
     const user = await (auth.currentUser ? Promise.resolve(auth.currentUser) : new Promise((res) => {
       const unsub = auth.onAuthStateChanged((u) => { unsub(); res(u); });
     }));
@@ -74,7 +78,17 @@
       plate: data.plate || "", online: false, rating: 0, approved: false,
       ownerUid: id, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    await db.collection(RIDERS_COL).doc(id).set(profile);
+    if (userDoc) {
+      // ANDIKO MOJA LA "BATCH" (atomiki) - angalia maelezo marefu kwenye
+      // createNewRestaurant (js/restaurants-firestore.js) - dhana ni ile
+      // ile hapa: hati ya rider + hati ya users/{uid} kwa mkupuo mmoja.
+      const batch = db.batch();
+      batch.set(db.collection(RIDERS_COL).doc(id), profile);
+      batch.set(db.collection("users").doc(id), userDoc);
+      await batch.commit();
+    } else {
+      await db.collection(RIDERS_COL).doc(id).set(profile);
+    }
     myRiderId = id;
     return Object.assign({ id }, profile);
   };
