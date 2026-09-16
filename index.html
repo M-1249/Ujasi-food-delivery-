@@ -47,6 +47,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preload" as="image" href="images/hero-food.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/global.css">
 <style>
@@ -62,10 +63,7 @@
   }
   .splash-top{ position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; }
   .mark{ display:flex; align-items:center; gap:10px; }
-  .mark .cross{ width:28px; height:28px; position:relative; }
-  .mark .cross::before,.mark .cross::after{ content:""; position:absolute; background: var(--accent); border-radius:3px; }
-  .mark .cross::before{ width:28px; height:8px; top:10px; left:0; }
-  .mark .cross::after{ width:8px; height:28px; top:0; left:10px; }
+  .mark .logo-mark{ width:30px; height:30px; border-radius:8px; object-fit:cover; flex:none; box-shadow: 0 2px 8px rgba(0,0,0,.28); }
   .mark span{ font-family: var(--font-display); font-weight:700; font-size:19px; color: var(--primary-dark); }
   .lang-pill{ font-family: var(--font-mono); font-size:11px; border:1px solid var(--line); border-radius: var(--r-pill); padding:5px 10px; color: var(--ink-soft); background:#fff; }
 
@@ -88,8 +86,53 @@
   .stat b{ display:block; font-family: var(--font-display); font-size:18px; color: var(--primary-dark); }
   .stat span{ font-size:10.5px; color: var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; }
 
-  .splash-cta{ position:relative; z-index:1; margin-top:26px; display:flex; flex-direction:column; gap:10px; }
-  .splash-cta .fine{ text-align:center; font-size:12px; color: var(--ink-soft); }
+  .hero-carousel{
+    position:relative; margin-top:20px; border-radius: var(--r-lg);
+    overflow:hidden; box-shadow: var(--shadow-2); aspect-ratio: 16/11;
+  }
+  .hc-slide{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    opacity:0; transform: scale(1.04); transition: opacity .7s ease, transform .7s ease;
+    padding:20px;
+  }
+  .hc-slide::before{
+    /* Weka giza kidogo juu ya picha ili maandishi meupe yaendelee
+       kusomeka vizuri, iwe picha halisi imewekwa au bado ni gradient
+       ya muda (picha haijawekwa bado). */
+    content:""; position:absolute; inset:0; z-index:0;
+    background: linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.5) 100%);
+  }
+  .hc-icon, .hc-caption{ position:relative; z-index:1; }
+  .hc-slide.active{ opacity:1; transform:scale(1); }
+  .hc-icon{ font-size:52px; margin-bottom:10px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.18)); }
+  .hc-caption{ color:#fff; font-family: var(--font-display); font-weight:700; font-size:17px; line-height:1.3; }
+  .hc-caption span{ display:block; font-family: var(--font-body); font-weight:400; font-size:12.5px; opacity:.92; margin-top:4px; }
+  .hc-dots{ position:absolute; bottom:12px; left:0; right:0; display:flex; justify-content:center; gap:6px; z-index:2; }
+  .hc-dot{
+    width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.45);
+    transition: all .3s; border:none; padding:0; cursor:pointer;
+  }
+  .hc-dot.active{ width:18px; border-radius: var(--r-pill); background:#fff; }
+
+  .help-line{
+    margin-top:14px; display:flex; align-items:center; gap:10px;
+    background:#fff; border:1px solid var(--line); border-radius: var(--r-md);
+    padding:12px 14px;
+  }
+  .help-icon{ font-size:21px; flex:none; }
+  .help-text{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .help-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color: var(--ink-soft); }
+  .help-number{
+    background:none; border:none; padding:0; text-align:left; font-family: var(--font-mono);
+    font-weight:700; font-size:16px; color: var(--primary-dark); cursor:pointer;
+  }
+  .help-call{
+    flex:none; width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; background: var(--primary-tint); color: var(--primary-dark);
+    text-decoration:none; font-size:17px;
+  }
+  .help-copy-hint{ flex:none; font-size:10px; color: var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -97,7 +140,7 @@
 <div class="splash">
 
   <div class="splash-top reveal">
-    <div class="mark"><div class="cross"></div><span>UJASI</span></div>
+    <div class="mark"><img src="icons/icon-192.png" alt="UJASI" class="logo-mark"><span>UJASI</span></div>
     <div class="lang-pill">SW / EN</div>
   </div>
 
@@ -108,24 +151,56 @@
       <p>Agiza kutoka migahawa uliyoiamini karibu nawe, lipia kwa Lipa Namba, na fuatilia oda yako hatua kwa hatua — mpaka order yako ifike mlangoni kwako </p>
     </div>
 
-    <div class="hero-card reveal" style="animation-delay:.12s">
-      <div class="label-card">
-        <div class="label-eyebrow"><span class="dot"></span> Maji Safi ya Kunywa — Bure Delivery</div>
-        <div class="row between">
-          <div class="code">FREE-H2O</div>
-          <span class="badge badge-success">Inapatikana</span>
-        </div>
+    <div class="hero-carousel reveal" id="heroCarousel" style="animation-delay:.1s">
+      <div class="hc-slide active" role="img" aria-label="Chakula kitamu kutoka migahawa bora Dodoma" style="background: url('images/hero-food.jpg') center/cover no-repeat, linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);">
+        <div class="hc-icon">🍛</div>
+        <div class="hc-caption">Chakula Kitamu<span>Kutoka migahawa bora Dodoma</span></div>
+      </div>
+      <div class="hc-slide" role="img" aria-label="Rider akiwasilisha chakula haraka" style="background: url('images/hero-delivery.jpg') center/cover no-repeat, linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);">
+        <div class="hc-icon">🛵</div>
+        <div class="hc-caption">Uwasilishaji wa Haraka<span>Dakika 25 wastani kufika</span></div>
+      </div>
+      <div class="hc-slide" role="img" aria-label="Huduma kamili ya UJASI — migahawa, riders na wateja" style="background: url('images/hero-community.jpg') center/cover no-repeat, linear-gradient(135deg, #2AA8CE 0%, var(--primary-dark) 100%);">
+        <div class="hc-icon">🏙️</div>
+        <div class="hc-caption">Huduma Kamili UJASI<span>Migahawa, Riders na Wewe — pamoja</span></div>
+      </div>
+      <div class="hc-dots">
+        <button type="button" class="hc-dot active" aria-label="Slide 1" onclick="goToHeroSlide(0)"></button>
+        <button type="button" class="hc-dot" aria-label="Slide 2" onclick="goToHeroSlide(1)"></button>
+        <button type="button" class="hc-dot" aria-label="Slide 3" onclick="goToHeroSlide(2)"></button>
       </div>
     </div>
 
-    <div class="stat-row reveal" style="animation-delay:.16s">
+    <div class="hero-card reveal" style="animation-delay:.14s">
+      <a href="customer-promotions.html" style="text-decoration:none; color:inherit;">
+        <div class="label-card" id="heroPromoCard">
+          <div class="label-eyebrow"><span class="dot"></span> Maji Safi ya Kunywa — Bure Delivery</div>
+          <div class="row between">
+            <div class="code">FREE-H2O</div>
+            <span class="badge badge-success">Inapatikana</span>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="stat-row reveal" style="animation-delay:.18s">
       <div class="stat"><b>40+</b><span>Migahawa</span></div>
       <div class="stat"><b>4.7★</b><span>Wastani</span></div>
       <div class="stat"><b>25 dk</b><span>Wastani Kufika</span></div>
     </div>
+
+    <div class="help-line reveal" style="animation-delay:.22s">
+      <div class="help-icon">☎️</div>
+      <div class="help-text">
+        <span class="help-label">Unahitaji Msaada?</span>
+        <button type="button" class="help-number" id="helpNumberBtn" data-number="0682293914" onclick="copyHelpNumber()">0682 293 914</button>
+      </div>
+      <a class="help-call" href="tel:0682293914" aria-label="Piga simu">📞</a>
+      <span class="help-copy-hint">Gusa<br>kunakili</span>
+    </div>
   </div>
 
-  <div class="splash-cta reveal" style="animation-delay:.2s">
+  <div class="splash-cta reveal" style="animation-delay:.26s">
 
     <button class="install-banner" data-install-btn onclick="triggerInstall()">
       <span class="install-icon">📲</span>
@@ -170,6 +245,78 @@
   }
 </style>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/app.js"></script>
+<script src="js/platform-firestore.js"></script>
+<script>
+  // Hero carousel: picha 3 zinapishana kila sekunde 3. Dots zinabofyeka
+  // (goToHeroSlide) kwa mwendo wa mkono, na animation inasimama ikiwa
+  // tab haionekani (Page Visibility API) kuokoa betri ya simu.
+  const heroSlides = document.querySelectorAll("#heroCarousel .hc-slide");
+  const heroDots = document.querySelectorAll("#heroCarousel .hc-dot");
+  let heroIndex = 0;
+  let heroTimer = null;
+
+  function showHeroSlide(next){
+    heroSlides[heroIndex].classList.remove("active");
+    heroDots[heroIndex] && heroDots[heroIndex].classList.remove("active");
+    heroIndex = next;
+    heroSlides[heroIndex].classList.add("active");
+    heroDots[heroIndex] && heroDots[heroIndex].classList.add("active");
+  }
+  function startHeroAuto(){
+    if(heroTimer) clearInterval(heroTimer);
+    heroTimer = setInterval(() => showHeroSlide((heroIndex + 1) % heroSlides.length), 3000);
+  }
+  function goToHeroSlide(i){
+    showHeroSlide(i);
+    startHeroAuto(); // anza kuhesabu upya sekunde 3 baada ya kubofya kwa mkono
+  }
+  if(heroSlides.length){
+    startHeroAuto();
+    document.addEventListener("visibilitychange", () => {
+      if(document.hidden){ clearInterval(heroTimer); }
+      else { startHeroAuto(); }
+    });
+  }
+
+  // Namba ya msaada: gusa kunakili kwenye clipboard.
+  function copyHelpNumber(){
+    const btn = document.getElementById("helpNumberBtn");
+    const number = btn.getAttribute("data-number");
+    const done = () => showToast("Namba imenakiliwa: " + number, "success");
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(number).then(done).catch(() => fallbackCopyNumber(number, done));
+    } else {
+      fallbackCopyNumber(number, done);
+    }
+  }
+  function fallbackCopyNumber(text, onDone){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); onDone(); }
+    catch(e){ showToast("Imeshindikana kunakili — piga namba moja kwa moja", "error"); }
+    document.body.removeChild(ta);
+  }
+  // Kadi ya "Ofa" kwenye hero - LIVE kutoka Promotions za Super Admin.
+  // Default (maji safi) inabaki ikionekana wakati wa kusubiri mtandao NA
+  // ikiwa hakuna ofa ya sasa (haionekani "tupu" kamwe) - ofa halisi ya
+  // KWANZA inayoendelea (active) inachukua nafasi yake ikiwa ipo.
+  function renderHeroPromo(){
+    if(typeof isPromotionsDataReady !== "function" || !isPromotionsDataReady()) return; // bado inasubiri - default ya maji inabaki
+    const list = getActivePromotions();
+    if(!list.length) return; // hakuna ofa ya sasa - default ya maji inabaki
+    const p = list[0];
+    const card = document.getElementById("heroPromoCard");
+    card.querySelector(".label-eyebrow").innerHTML = `<span class="dot"></span> ${p.title}`;
+    card.querySelector(".code").textContent = p.code || (p.discountPercent ? p.discountPercent + "% OFF" : "OFA");
+  }
+  renderHeroPromo();
+  window.onUjasiPromotionsUpdate = renderHeroPromo; // sasisho la LIVE (Firestore onSnapshot)
+</script>
 </body>
 </html>

@@ -42,6 +42,12 @@
   .rest-card{ border:1px solid var(--line); border-radius: var(--r-lg); overflow:hidden; background:#fff; box-shadow: var(--shadow-1); }
   .rest-card .cover{ position:relative; height:120px; overflow:hidden; background:var(--surface); }
   .rest-card .cover img{ width:100%; height:100%; object-fit:cover; }
+  .rest-card .cover .cover-fallback{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-display); font-weight:700; font-size:26px; color:#fff;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    letter-spacing:1px;
+  }
   .rest-card .cover .status{ position:absolute; top:10px; left:10px; }
   .rest-card .cover .fee{ position:absolute; top:10px; right:10px; }
   .rest-card .info{ padding:12px 14px; }
@@ -54,7 +60,7 @@
 <div class="app-shell">
 
   <div class="topbar">
-    <div class="brand"><div class="cross"></div> UJASI</div>
+    <div class="brand"><img src="icons/icon-192.png" alt="UJASI" class="logo-mark"> UJASI</div>
     <div class="spacer"></div>
     <a href="customer-notifications.html" class="back" style="text-decoration:none;">🔔</a>
   </div>
@@ -128,6 +134,20 @@ function selectCategory(c){
 
 function renderRestaurants(){
   const q = (document.getElementById("searchInput").value || "").toLowerCase();
+
+  if(!isRestaurantsDataReady()){
+    // Data ya kwanza ya Firestore bado haijafika (cache wala server) -
+    // ONYESHA "INAPAKIA", SI "HAKUNA MGAHAWA" - hii ndiyo iliyokuwa
+    // ikichanganya na kuonekana kama "kuchelewa/tatizo" wakati kweli
+    // ni hali ya kawaida ya kusubiri mtandao (hasa mara ya kwanza
+    // kabla cache ya IndexedDB haijajaa).
+    document.getElementById("restCount").textContent = "Inapakia…";
+    document.getElementById("restList").innerHTML = `
+      <div class="empty"><div class="ic">⏳</div>Inapakia migahawa…</div>
+    `;
+    return;
+  }
+
   let list = getAllPlatformRestaurants().filter(r => {
     const matchesCat = activeCategory === "Zote" || r.category === activeCategory;
     const matchesSearch = r.name.toLowerCase().includes(q) ||
@@ -141,7 +161,7 @@ function renderRestaurants(){
     <a href="customer-restaurant.html?id=${r.id}" style="text-decoration:none; color:inherit;">
       <div class="rest-card ${r.isOpen ? "" : "closed"}">
         <div class="cover">
-          <img src="${r.cover}" alt="${r.name}" loading="lazy">
+          ${r.cover ? `<img src="${r.cover}" alt="${r.name}" loading="lazy">` : `<div class="cover-fallback">${r.logo || "🍽️"}</div>`}
           <span class="badge ${r.isOpen ? "badge-success" : "badge-alert"} status">${r.isOpen ? "Wazi" : "Imefungwa"}</span>
           <span class="badge badge-primary fee">🚴 ${formatTZS(r.deliveryFee)}</span>
         </div>

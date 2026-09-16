@@ -59,17 +59,23 @@
   const PROMO_COL = "promotions";
   let promoCache = [];
   let promoListenerOn = false;
+  let promoFirstSnapshotReceived = false; // sawa na isRestaurantsDataReady() - tofautisha "inapakia" na "hakuna"
   function attachPromoListener() {
     if (promoListenerOn || !fbReady()) return;
     promoListenerOn = true;
     db.collection(PROMO_COL).onSnapshot((snap) => {
       promoCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      promoFirstSnapshotReceived = true;
       window.dispatchEvent(new CustomEvent("ujasi-promotions-updated"));
       if (typeof window.onUjasiPromotionsUpdate === "function") {
         try { window.onUjasiPromotionsUpdate(); } catch (e) { console.error(e); }
       }
     }, (err) => console.error("UJASI: promotions onSnapshot error:", err));
   }
+  window.isPromotionsDataReady = function () {
+    attachPromoListener();
+    return promoFirstSnapshotReceived;
+  };
   window.getAllPromotions = function () {
     attachPromoListener();
     return promoCache.slice();

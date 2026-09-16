@@ -45,6 +45,10 @@ function copyCode(code){
   }
 }
 function render(){
+  if(!isPromotionsDataReady()){
+    document.getElementById("promoList").innerHTML = `<div class="empty"><div class="ic">⏳</div>Inapakia ofa…</div>`;
+    return;
+  }
   const list = getActivePromotions();
   const wrap = document.getElementById("promoList");
   if(list.length === 0){
