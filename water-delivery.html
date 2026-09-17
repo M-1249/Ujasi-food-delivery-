@@ -286,8 +286,7 @@ document.getElementById("orderWaterBtn").addEventListener("click", async functio
     showToast("Ombi la maji limetumwa — tunathibitisha malipo yako", "success");
     window.location.href = `customer-order-track.html?code=${orderCode}`;
   }catch(e){
-    console.error(e);
-    showToast("Imeshindikana kutuma ombi - angalia mtandao wako na jaribu tena", "error");
+    showToast(explainUjasiError(e), "error");
     btn.disabled = false;
     btn.textContent = "Agiza Maji Sasa";
   }

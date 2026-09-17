@@ -25,6 +25,7 @@
   const REST_COL = "restaurants";
   let restaurantsCache = [];
   let restaurantsListenerOn = false;
+  let restaurantsFirstSnapshotReceived = false; // tofautisha "inapakia" na "hakuna migahawa"
   const menuCache = {};      // { restaurantId: [items] }
   const menuListeners = {};  // { restaurantId: true }
   let myRestaurantId = null; // cache ya mmiliki wa sasa (badala ya localStorage)
@@ -49,9 +50,25 @@
     restaurantsListenerOn = true;
     db.collection(REST_COL).onSnapshot((snap) => {
       restaurantsCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      restaurantsFirstSnapshotReceived = true;
       notify("ujasi-restaurants-updated");
-    }, (err) => console.error("UJASI: restaurants onSnapshot error:", err));
+    }, (err) => {
+      console.error("UJASI: restaurants onSnapshot error:", err);
+      restaurantsFirstSnapshotReceived = true; // hata ikishindikana, acha UI itoke kwenye hali ya "inapakia" milele
+      notify("ujasi-restaurants-updated");
+    });
   }
+
+  // MUHIMU: hii ndiyo iliyokuwa IKIKOSEKANA - customer-home.html (na
+  // kurasa nyingine) zinaiita kabla ya kuonyesha orodha ya migahawa,
+  // ili kutofautisha "bado inapakia data ya kwanza" na "kweli hakuna
+  // migahawa". Bila function hii kuwepo, ukurasa ulikuwa ukipata
+  // JavaScript error mara moja (ReferenceError) na kuzuia migahawa
+  // yote kuonekana KABISA, hata pale yalipokuwepo Firestore.
+  window.isRestaurantsDataReady = function () {
+    attachRestaurantsListener();
+    return restaurantsFirstSnapshotReceived;
+  };
 
   function attachMenuListener(restaurantId) {
     if (menuListeners[restaurantId] || !fbReady()) return;

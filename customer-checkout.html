@@ -190,8 +190,7 @@ document.getElementById("placeOrderBtn").addEventListener("click", async functio
     showToast("Oda imetumwa — tunathibitisha malipo yako", "success");
     window.location.href = `customer-order-track.html?code=${orderCode}`;
   }catch(e){
-    console.error(e);
-    showToast("Imeshindikana kutuma oda - angalia mtandao wako na jaribu tena", "error");
+    showToast(explainUjasiError(e), "error");
     btn.disabled = false;
     btn.textContent = "Thibitisha Oda →";
   }

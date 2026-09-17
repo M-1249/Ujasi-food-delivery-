@@ -38,6 +38,39 @@ function showToast(msg, type, durationMs){
   setTimeout(() => t.remove(), duration);
 }
 
+/* ---------- Ufafanuzi sahihi wa makosa (badala ya "hakuna mtandao" kwa kila kitu) ----------
+   Kabla ya hii, kurasa nyingi zilikuwa zikionyesha ujumbe uleule
+   ("angalia mtandao wako") kwa AINA ZOTE za makosa - hata pale
+   tatizo halikuwa mtandao (mfano: Anonymous Sign-in haijawezeshwa
+   Firebase Console, au Security Rules zimekataa). Function hii
+   inaangalia error halisi na kutoa ujumbe sahihi kwa mtumiaji NA
+   kwa console (kwa ajili yako wewe developer kuchunguza). */
+function explainUjasiError(err){
+  const code = (err && err.code) || "";
+  const msg = (err && err.message) || "";
+  console.error("UJASI error detail:", code, msg, err);
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return "Simu/kifaa chako hakina mtandao kwa sasa - washa Data au WiFi kisha jaribu tena.";
+  }
+  if (code === "auth/operation-not-allowed" || msg.indexOf("operation-not-allowed") !== -1) {
+    return "Tatizo la usanidi wa mfumo (uthibitisho wa wageni haujawezeshwa) - taarifu msimamizi.";
+  }
+  if (code === "permission-denied" || msg.indexOf("permission-denied") !== -1 || msg.indexOf("Missing or insufficient permissions") !== -1) {
+    return "Huna ruhusa ya kufanya hii - jaribu kutoka nje na kuingia tena kwenye akaunti yako.";
+  }
+  if (code === "unavailable" || msg.indexOf("unavailable") !== -1) {
+    return "Imeshindikana kuunganisha na seva kwa sasa - jaribu tena baada ya sekunde chache.";
+  }
+  if (code === "no-auth" || msg.indexOf("Hakuna auth") !== -1) {
+    return "Imeshindikana kuthibitisha akaunti yako - jaribu tena, au funga na fungua programu upya.";
+  }
+  if (navigator.onLine === true) {
+    return "Imeshindikana kukamilisha - jaribu tena. Kama tatizo linaendelea, taarifu msimamizi.";
+  }
+  return "Imeshindikana kukamilisha - angalia mtandao wako na jaribu tena.";
+}
+
 /* ---------- Order / Transaction code generator ----------
    Muundo: UJ-XXXX-XXXX (kama namba ya lebo ya dawa) */
 function generateOrderCode(){

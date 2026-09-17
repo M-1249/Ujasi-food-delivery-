@@ -30,6 +30,7 @@
   let cache = [];
   let listenerAttached = false;
   let authPromise = null;
+  let lastAuthError = null; // sababu HALISI ya mwisho ya kushindwa kwa anonymous sign-in (kwa ajili ya ujumbe sahihi kwa mtumiaji)
 
   function firebaseReady() {
     return (
@@ -55,9 +56,10 @@
         } else {
           auth
             .signInAnonymously()
-            .then((cred) => resolve(cred.user))
+            .then((cred) => { lastAuthError = null; resolve(cred.user); })
             .catch((err) => {
               console.error("UJASI: anonymous sign-in imeshindikana:", err);
+              lastAuthError = err; // tunaihifadhi ili saveOrder() iweze kutoa sababu sahihi, si "hakuna mtandao" kwa jumla
               resolve(null);
             });
         }
@@ -135,14 +137,21 @@
   // - "Oda Zangu"), TUMIA getMyOrders() badala yake, la sivyo mteja
   // ataona oda za wateja WENGINE pia.
   window.getMyOrders = function () {
-    attachListener();
+    // MUHIMU: HATUITI attachListener() hapa (soma maelezo kwenye
+    // saveOrder() hapo juu - collection nzima haipitishwi na Security
+    // Rules kwa mteja). Kwa "Oda Zangu" tumia listenMyOrders() badala
+    // yake (query iliyochujwa kwa where(customerUid==...) - hiyo pekee
+    // inaruhusiwa na Security Rules kwa mteja).
     const uid = typeof auth !== "undefined" && auth.currentUser ? auth.currentUser.uid : null;
     if (!uid) return [];
     return cache.filter((o) => o.customerUid === uid);
   };
 
   window.getOrderByCode = function (code) {
-    attachListener();
+    // MUHIMU: HATUITI attachListener() hapa - ni collection nzima isiyo
+    // na "where" filter, ambayo Security Rules zinaikataa kwa MTEJA
+    // (soma maelezo ndani ya saveOrder() hapo juu). Kurasa za mteja
+    // zinatumia listenToOrder() badala yake (hati MOJA - salama).
     const hit = cache.find((o) => o.orderCode === code);
     if (hit) return hit;
     // Fallback: soma moja kwa moja kutoka Firestore ikiwa haijafika
@@ -153,13 +162,26 @@
   };
 
   window.saveOrder = async function (order) {
-    attachListener();
+    // MUHIMU: HATUITI attachListener() hapa tena. saveOrder() haihitaji
+    // kusoma "cache" ya collection nzima ya orders (ni WRITE tu ya hati
+    // MOJA) - lakini awali ilikuwa ikiita attachListener() ambayo
+    // inafungua listener ya COLLECTION NZIMA ya "orders" bila "where"
+    // filter. Kwa MTEJA (si staff), Security Rules zinaikataa hiyo
+    // listener moja kwa moja (query isiyochujwa haiwezi kuthibitishwa
+    // kuwa salama kwa kila hati) - hivyo kila mteja alipokuwa akituma
+    // oda, alikuwa akipata ONYO/TOAST YA KOSA ("muunganiko wa wakati
+    // halisi umeshindikana") papo hapo, HATA KAMA oda yenyewe ilikuwa
+    // imefanikiwa kutumwa - ikionekana kama "mfumo unagoma" kumbe
+    // ilikuwa ni kosa la listener isiyohusiana kabisa na uandishi wa oda.
     const user = await ensureAuth();
     if (!user) {
-      if (typeof showToast === "function") {
-        showToast("Imeshindikana kuunganisha na mtandao - jaribu tena", "error");
-      }
-      throw new Error("Hakuna auth - imeshindikana kutuma oda");
+      // Tunatengeneza error yenye "code" halisi (kutoka Firebase Auth
+      // ikiwa ipo) ili ukurasa unaoita saveOrder() aweze kuonyesha
+      // ujumbe sahihi kwa explainUjasiError() - si "hakuna mtandao"
+      // kwa kila aina ya tatizo.
+      const e = new Error("Hakuna auth - imeshindikana kutuma oda");
+      e.code = (lastAuthError && lastAuthError.code) || "no-auth";
+      throw e;
     }
     const payload = Object.assign({}, order, {
       customerUid: user.uid,
