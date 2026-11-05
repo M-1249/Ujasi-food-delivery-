@@ -149,8 +149,9 @@ document.getElementById("placeOrderBtn").addEventListener("click", async functio
   const guestName = document.getElementById("guestName").value.trim();
   if(!guestName){ showToast("Weka jina lako", "error"); return; }
   if(!selectedNetwork){ showToast("Chagua mtandao wa Lipa Namba", "error"); return; }
-  const txnId = document.getElementById("txnId").value.trim();
+  const txnId = document.getElementById("txnId").value.trim().toUpperCase();
   if(!txnId){ showToast("Weka Namba ya Muamala (Transaction ID)", "error"); return; }
+  if(!/^[A-Z0-9._-]{6,40}$/.test(txnId)){ showToast("Namba ya Muamala si sahihi - tumia herufi na namba pekee (6 hadi 40) kama ilivyo kwenye SMS", "error"); return; }
   const addrSel = document.getElementById("addrSelect");
   if(!addrSel.value){ showToast("Chagua au ongeza anwani ya kufikisha", "error"); return; }
 

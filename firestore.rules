@@ -1,16 +1,31 @@
 rules_version = '2';
 
 /* =====================================================
-   FIRESTORE SECURITY RULES — UJASI FOOD DELIVERY
-   Bandika hizi kwenye Firebase Console → Firestore Database
-   → Rules, kisha "Publish".
+   FIRESTORE SECURITY RULES v3 — UJASI FOOD DELIVERY
+   Bandika kwenye Firebase Console → Firestore Database →
+   Rules → Publish. (Nakala ya zamani: firestore.rules.v2-old)
 
-   MUHIMU: Hizi ndizo zinazohakikisha KUTENGWA KAMILI (isolation)
-   kati ya wamiliki tofauti wa data - Mgahawa A HAWEZI kuona/
-   kuhariri oda au menyu ya Mgahawa B, Mteja A HAWEZI kuona
-   akaunti/anwani/kikapu cha Mteja B, na Rider A HAWEZI kuona
-   maelezo binafsi ya Rider B. Kanuni hizi ndizo "chanzo cha
-   ukweli" - UI ya mbele (front-end) haitoshi peke yake.
+   KANUNI KUU
+   1. Cheo (role) HAKIWEZI kujipa mwenyewe. admin_layer1 na
+      super_admin zinawekwa na wewe TU kupitia Firebase Console
+      (users/{uid}.role). Mtu yeyote anaweza kujiandikisha kama
+      customer / restaurant_admin / rider, lakini ruhusa halisi za
+      mgahawa na rider zinatokana na "approved == true" (idhini ya
+      Admin), si jina la cheo.
+   2. PESA: pesa zote zinaingia Lipa Namba ya jukwaa, kwa hiyo
+      ADMIN TU (admin_layer1/super_admin) ndiye anayethibitisha
+      malipo - na lazima aandike kiasi kilichopokelewa
+      (paidAmount) kinacholingana na jumla ya oda. Mgahawa
+      unaona oda TU baada ya malipo kuthibitishwa.
+   3. Namba ya Muamala (txnId) inaweza kutumika MARA MOJA tu
+      (koleksheni txns - kitambulisho cha hati = namba yenyewe).
+   4. Oda ya Maji: bei na jumla vinakaguliwa na rules (settings/water).
+      Oda ya Chakula: ada ya usafiri inakaguliwa na rules; bei za
+      bidhaa zinakaguliwa na Admin wakati wa kuthibitisha malipo
+      (rules haziwezi kupitia orodha ya bidhaa).
+   5. Rules si "kichujio": kila ukurasa lazima uulize data kwa
+      query iliyochujwa kulingana na role yake (angalia
+      js/orders-firestore.js na js/riders-firestore.js).
    ===================================================== */
 
 service cloud.firestore {
@@ -20,139 +35,287 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
-    function currentRole() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+    function userRole() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
         : null;
     }
-    function isStaffAdmin() {
-      return signedIn() && currentRole() in ["admin_layer1", "super_admin"];
+    function isAdmin() {
+      return userRole() in ["admin_layer1", "super_admin"];
     }
-    function isSuperAdmin() {
-      return signedIn() && currentRole() == "super_admin";
+    function isSuper() {
+      return userRole() == "super_admin";
     }
-    function ownsRestaurant(restaurantId) {
-      return signedIn() &&
-        exists(/databases/$(database)/documents/restaurants/$(restaurantId)) &&
-        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerUid == request.auth.uid;
+    // Mgahawa wa zamani usio na field ya "approved" unahesabiwa umeidhinishwa
+    // (sawa na ukurasa wa wateja: approved !== false). Usajili MPYA lazima uwe
+    // approved:false (angalia sharti la create hapa chini), kwa hiyo hili ni salama.
+    function restaurantApproved(rid) {
+      return exists(/databases/$(database)/documents/restaurants/$(rid))
+        && get(/databases/$(database)/documents/restaurants/$(rid)).data.get("approved", true) == true;
+    }
+    function approvedRestaurant() {
+      return signedIn() && restaurantApproved(request.auth.uid);
+    }
+    function approvedRider() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/riders/$(request.auth.uid))
+        && get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.approved == true;
+    }
+    function ownsRestaurant(rid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/restaurants/$(rid))
+        && get(/databases/$(database)/documents/restaurants/$(rid)).data.ownerUid == request.auth.uid;
+    }
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+    function touches(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+    function waterPrice() {
+      return exists(/databases/$(database)/documents/settings/water)
+        ? get(/databases/$(database)/documents/settings/water).data.bottlePrice
+        : 3000;
     }
 
     /* ---------- users/{uid} ----------
-       Hati ya "role" ya kila mtumiaji. Mtu anasoma/anaandika
-       hati YAKE tu; role haiwezi kubadilishwa baada ya kuundwa
-       (huzuia mtu "kujipandisha cheo" kuwa admin mwenyewe). */
+       Kila mtu anaunda hati YAKE, lakini ni cheo cha chini tu.
+       admin_layer1 / super_admin HAZIWEZI kuundwa kutoka kwenye app
+       (weka kwa mkono kwenye Firebase Console). Cheo hakibadilishwi. */
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isStaffAdmin());
-      allow create: if signedIn() && request.auth.uid == userId;
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.role in ["customer", "restaurant_admin", "rider"];
       allow update: if signedIn() && request.auth.uid == userId
-                    && (
-                      !("role" in resource.data) || resource.data.role == null
-                      || request.resource.data.role == resource.data.role
-                    );
+        && request.resource.data.role == resource.data.role;
       allow delete: if false;
     }
 
-    /* ---------- restaurants/{restaurantId} ----------
-       Orodha ni ya UMMA kusoma (wateja wanavinjari bila kuingia),
-       lakini kuandika ni MWENYE MGAHAWA HUYU TU (ownerUid == uid)
-       au Admin Layer 1/Super Admin (idhini, kuzima akaunti n.k.) -
-       Mgahawa A HAWEZI kubadilisha data ya Mgahawa B. */
+    /* ---------- restaurants/{id} ----------
+       Kusoma ni UMMA (wateja wanavinjari). Usajili mpya lazima uwe
+       approved:false, rating 0 - mmiliki HAWEZI kujiidhinisha wala
+       kubadilisha rating/ownerUid. Kitambulisho = uid ya mmiliki. */
     match /restaurants/{restaurantId} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && restaurantId == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.approved == false
+        && request.resource.data.rating == 0
+        && request.resource.data.reviews == 0;
       allow update: if signedIn() && (
-        resource.data.ownerUid == request.auth.uid || isStaffAdmin()
+        (resource.data.ownerUid == request.auth.uid
+          && !touches(["approved", "ownerUid", "rating", "reviews", "createdAt"]))
+        || isAdmin()
       );
-      allow delete: if isStaffAdmin();
+      allow delete: if isAdmin();
 
       match /menu/{itemId} {
         allow read: if true;
-        allow write: if ownsRestaurant(restaurantId) || isStaffAdmin();
+        allow create, update: if (ownsRestaurant(restaurantId)
+            && request.resource.data.name is string
+            && request.resource.data.name.size() > 0
+            && request.resource.data.name.size() <= 80
+            && request.resource.data.price is number
+            && request.resource.data.price > 0
+            && request.resource.data.price <= 200000)
+          || isAdmin();
+        allow delete: if ownsRestaurant(restaurantId) || isAdmin();
       }
     }
 
-    /* ---------- riders/{riderId} ----------
-       Rider anasoma/anaandika hati YAKE mwenyewe tu (riderId == uid
-       kwa usajili mpya); Admin Layer 1/Super Admin wanaona wote
-       (kwa ajili ya kugawa oda). Rider A HAWEZI kuona maelezo ya
-       Rider B. */
+    /* ---------- riders/{id} ---------- */
     match /riders/{riderId} {
-      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isStaffAdmin());
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if signedIn() && (resource.data.ownerUid == request.auth.uid || isStaffAdmin());
-      allow delete: if isStaffAdmin();
+      allow get: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn() && riderId == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.approved == false;
+      allow update: if signedIn() && (
+        (resource.data.ownerUid == request.auth.uid
+          && !touches(["approved", "ownerUid", "rating", "createdAt"]))
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
-    /* ---------- customers/{uid} ----------
-       Akaunti/anwani/kikapu cha MTEJA - HATI YAKE TU. Mteja A
-       HAWEZI kuona akaunti ya Mteja B kwa NAMNA YOYOTE - hakuna
-       "staff override" ya kusoma hapa isipokuwa Super Admin kwa
-       ajili ya huduma kwa wateja (support). */
+    /* ---------- customers/{uid} ---------- */
     match /customers/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
-      allow read: if isSuperAdmin();
+      allow read: if isSuper();
 
       match /addresses/{addrId} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
     }
 
-    /* ---------- orders/{orderId} ----------
-       Kusoma: MWENYE oda hii pekee (customerUid sahihi), AU wafanyakazi
-       wa mfumo (Mgahawa/Rider/Admin) wanaohitaji kuona oda kuzishughulikia.
-       Mteja MMOJA HAWEZI kufuatilia/kuona oda ya mteja MWINGINE - hata
-       akijua/kubashiri namba ya oda, isipokuwa ni yeye aliyeiweka.
-
-       Kuandika (update): MTEJA anaruhusiwa KUGHAIRI TU oda yake mwenyewe
-       (status -> "cancelled"). Mabadiliko mengine yote ya status/data
-       (thibitisha malipo, andaa, gawa rider, njiani, imefika) ni ya
-       WAFANYAKAZI wa mfumo pekee (restaurant_admin/rider/admin_layer1/
-       super_admin) - HAKUNA mtumiaji mwingine yeyote anayeweza
-       kubadilisha oda isiyo yake. */
-    match /orders/{orderId} {
-      allow read: if signedIn() && (
-        resource.data.customerUid == request.auth.uid
-        || currentRole() in ["restaurant_admin", "rider", "admin_layer1", "super_admin"]
-      );
+    /* ---------- txns/{txnKey} ----------
+       Kuzuia Namba ya Muamala moja kutumika kwenye oda nyingi.
+       Inaandikwa kwa batch pamoja na oda yenyewe (angalia saveOrder).
+       Haiwezi kubadilishwa wala kufutwa kamwe. */
+    match /txns/{txnKey} {
       allow create: if signedIn()
+        && txnKey.matches("^[A-Z0-9._-]{6,40}$")
+        && request.resource.data.keys().hasOnly(["orderCode", "customerUid", "createdAt"])
         && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.status == "pending_verification";
-      allow update: if signedIn() && (
-        (resource.data.customerUid == request.auth.uid
-          && request.resource.data.status == "cancelled")
-        || currentRole() in ["restaurant_admin", "rider", "admin_layer1", "super_admin"]
-      );
+        && request.resource.data.createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderCode))
+        && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderCode)).data.txnId == txnKey;
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
-    /* ---------- reviews/{reviewId} ----------
-       Mteja anaunda review ya oda YAKE tu; kila mtu anasoma
-       (zinaonekana kwenye ukurasa wa mgahawa); kufuta ni Admin. */
+    /* ---------- orders/{orderCode} ----------
+       KUSOMA (rules si kichujio - query ya ukurasa lazima ilingane):
+         Mteja     : oda zake tu (customerUid == uid)
+         Admin     : zote
+         Mgahawa   : oda za mgahawa wake ULIOIDHINISHWA, baada ya malipo
+                     kuthibitishwa tu
+         Rider     : zilizogawiwa yeye + foleni ya "ready_for_pickup"
+                     ambazo hazina rider (rider aliyeidhinishwa tu) */
+    match /orders/{orderId} {
+
+      function validOrderTarget() {
+        let d = request.resource.data;
+        let p = waterPrice();
+        return (d.type == "water"
+                && d.restaurantId == "water"
+                && d.items.size() == 1
+                && d.items[0].qty is number
+                && d.items[0].qty >= 1
+                && d.items[0].qty <= 20
+                && d.items[0].price == p
+                && d.subtotal == p * d.items[0].qty
+                && d.deliveryFee == 0)
+            || (d.type == "food"
+                && d.restaurantId is string
+                && restaurantApproved(d.restaurantId)
+                && d.deliveryFee == get(/databases/$(database)/documents/restaurants/$(d.restaurantId)).data.deliveryFee);
+      }
+
+      function restaurantMayChange() {
+        return onlyChanges(["status", "adminNote", "adminNoteAt", "updatedAt"])
+          && (request.resource.data.status == resource.data.status
+              || (resource.data.status == "payment_confirmed"
+                  && request.resource.data.status in ["preparing", "cancelled"])
+              || (resource.data.status == "preparing"
+                  && request.resource.data.status in ["ready_for_pickup", "cancelled"]));
+      }
+
+      function riderMayChange() {
+        return (resource.data.status == "ready_for_pickup"
+                && resource.data.riderId == null
+                && request.resource.data.riderId == request.auth.uid
+                && request.resource.data.status == "on_the_way"
+                && onlyChanges(["riderId", "status", "pickedUpAt", "updatedAt"]))
+            || (resource.data.riderId == request.auth.uid
+                && resource.data.status == "on_the_way"
+                && request.resource.data.status == "delivered"
+                && onlyChanges(["status", "deliveredAt", "updatedAt"]));
+      }
+
+      function adminMayChange() {
+        return onlyChanges(["status", "riderId", "pickedUpAt", "assignedByAdmin", "paidAmount",
+                            "verifiedBy", "paymentConfirmedAt", "adminNote", "adminNoteAt",
+                            "deliveredAt", "updatedAt"])
+          && (request.resource.data.status != "payment_confirmed"
+              || resource.data.status == "payment_confirmed"
+              || (resource.data.status == "pending_verification"
+                  && request.resource.data.paidAmount == resource.data.total
+                  && request.resource.data.verifiedBy == request.auth.uid));
+      }
+
+      allow get, list: if signedIn() && (
+        resource.data.customerUid == request.auth.uid
+        || isAdmin()
+        || (resource.data.restaurantId == request.auth.uid
+            && approvedRestaurant()
+            && resource.data.status in ["payment_confirmed", "preparing", "ready_for_pickup", "on_the_way", "delivered"])
+        || (approvedRider()
+            && (resource.data.riderId == request.auth.uid
+                || (resource.data.status == "ready_for_pickup" && resource.data.riderId == null)))
+      );
+
+      allow create: if signedIn()
+        && orderId.matches("^UJ-[A-Z0-9]{4}-[A-Z0-9]{4}$")
+        && request.resource.data.keys().hasOnly(["orderCode", "type", "restaurantId", "restaurantName",
+             "customerName", "items", "subtotal", "deliveryFee", "total", "network", "txnId", "note",
+             "deliveryAddress", "status", "riderId", "customerUid", "createdAt", "updatedAt"])
+        && request.resource.data.keys().hasAll(["orderCode", "type", "restaurantId", "items", "subtotal",
+             "deliveryFee", "total", "txnId", "status", "customerUid", "createdAt"])
+        && request.resource.data.orderCode == orderId
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.status == "pending_verification"
+        && request.resource.data.riderId == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.type in ["food", "water"]
+        && request.resource.data.items is list
+        && request.resource.data.items.size() >= 1
+        && request.resource.data.items.size() <= 30
+        && request.resource.data.subtotal is number
+        && request.resource.data.subtotal > 0
+        && request.resource.data.deliveryFee is number
+        && request.resource.data.deliveryFee >= 0
+        && request.resource.data.total == request.resource.data.subtotal + request.resource.data.deliveryFee
+        && request.resource.data.total <= 500000
+        && request.resource.data.txnId is string
+        && request.resource.data.txnId.matches("^[A-Z0-9._-]{6,40}$")
+        && validOrderTarget()
+        && existsAfter(/databases/$(database)/documents/txns/$(request.resource.data.txnId))
+        && getAfter(/databases/$(database)/documents/txns/$(request.resource.data.txnId)).data.orderCode == orderId;
+
+      allow update: if signedIn() && (
+        // Mteja: kughairi TU kabla malipo hayajathibitishwa
+        (resource.data.customerUid == request.auth.uid
+          && resource.data.status == "pending_verification"
+          && request.resource.data.status == "cancelled"
+          && onlyChanges(["status", "updatedAt"]))
+        || (isAdmin() && adminMayChange())
+        || (resource.data.restaurantId == request.auth.uid && approvedRestaurant() && restaurantMayChange())
+        || (approvedRider() && riderMayChange())
+      );
+
+      allow delete: if false;
+    }
+
+    /* ---------- reviews/{orderCode} ----------
+       Review MOJA kwa kila oda (kitambulisho = orderCode), na oda
+       lazima iwe ya mteja huyu na imekamilika (delivered). */
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(["orderCode", "restaurantId", "restaurantName", "rating",
+             "comment", "customerName", "customerUid", "createdAt"])
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.orderCode == reviewId
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 500
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/orders/$(reviewId))
+        && get(/databases/$(database)/documents/orders/$(reviewId)).data.customerUid == request.auth.uid
+        && get(/databases/$(database)/documents/orders/$(reviewId)).data.status == "delivered";
       allow update: if false;
-      allow delete: if isStaffAdmin();
+      allow delete: if isAdmin();
     }
 
-    /* ---------- promotions/{promoId} ----------
-       Zinaonekana kwa wateja wote (umma); kuhariri ni Super
-       Admin pekee. */
+    /* ---------- promotions ---------- */
     match /promotions/{promoId} {
       allow read: if true;
-      allow write: if isSuperAdmin();
+      allow write: if isSuper();
     }
 
-    /* ---------- settings/{docId} ----------
-       Mipangilio ya jukwaa (Lipa Namba, bei ya maji, tozo n.k.) -
-       inasomwa na kila mtu aliyeingia (inahitajika kwenye
-       checkout), lakini kuhaririwa ni Admin Layer 1/Super Admin
-       pekee. */
+    /* ---------- settings ----------
+       Lipa Namba (settings/payment) ni eneo hatari zaidi: ukibadilisha
+       pesa za wateja zinaenda namba nyingine. Super Admin TU. */
     match /settings/{docId} {
       allow read: if true;
-      allow write: if isStaffAdmin();
+      allow write: if docId == "payment" ? isSuper() : isAdmin();
     }
 
-    /* ---------- Kila kitu kingine: kimefungwa kwa default ---------- */
+    /* ---------- Kila kitu kingine: kimefungwa ---------- */
     match /{document=**} {
       allow read, write: if false;
     }

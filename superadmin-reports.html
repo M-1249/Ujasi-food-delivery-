@@ -66,6 +66,7 @@
 <script src="js/admin-layer1.js"></script>
 <script src="js/super-admin.js"></script>
 <script>
+window.UJASI_ORDERS_WINDOW_DAYS = 7; // ripoti ya siku 7 - lazima iwekwe KABLA ya getOrders() ya kwanza
 function renderChart(){
   const days = getRevenueLast7Days();
   const max = Math.max(...days.map(d => d.total), 1);

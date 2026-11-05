@@ -118,6 +118,7 @@
 <script src="js/customer-firestore.js"></script>
 <script src="js/platform-firestore.js"></script>
 <script>
+const DEMO_CATEGORIES = ["Zote", "Kienyeji", "Kuku", "Nyama Choma", "Samaki", "Vitafunwa", "Vinywaji"];
 let activeCategory = "Zote";
 
 function renderCategories(){
@@ -151,7 +152,7 @@ function renderRestaurants(){
   let list = getAllPlatformRestaurants().filter(r => {
     const matchesCat = activeCategory === "Zote" || r.category === activeCategory;
     const matchesSearch = r.name.toLowerCase().includes(q) ||
-      r.foods.some(f => f.name.toLowerCase().includes(q));
+      (r.foodNames || []).some(n => String(n).toLowerCase().includes(q));
     return matchesCat && matchesSearch;
   });
 

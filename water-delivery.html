@@ -236,8 +236,9 @@ document.getElementById("orderWaterBtn").addEventListener("click", async functio
   const guestName = document.getElementById("guestName").value.trim();
   if(!guestName){ showToast("Weka jina lako", "error"); return; }
   if(!selectedNetwork){ showToast("Chagua mtandao wa Lipa Namba", "error"); return; }
-  const txnId = document.getElementById("txnId").value.trim();
+  const txnId = document.getElementById("txnId").value.trim().toUpperCase();
   if(!txnId){ showToast("Weka Namba ya Muamala (Transaction ID)", "error"); return; }
+  if(!/^[A-Z0-9._-]{6,40}$/.test(txnId)){ showToast("Namba ya Muamala si sahihi - tumia herufi na namba pekee (6 hadi 40) kama ilivyo kwenye SMS", "error"); return; }
 
   const addrSel = document.getElementById("addrSelect");
   let deliveryAddress = null;
@@ -256,6 +257,7 @@ document.getElementById("orderWaterBtn").addEventListener("click", async functio
 
   const orderCode = generateOrderCode();
   saveCustomerName(guestName);
+  const unitPrice = getWaterSettings().bottlePrice; // soma bei SASA HIVI (si kutoka kwa kigezo kilichoweza kuwa cha zamani)
   const order = {
     orderCode: orderCode,
     type: "water", // MUHIMU: hii ndiyo inayotenganisha oda za maji - hazina
@@ -265,10 +267,10 @@ document.getElementById("orderWaterBtn").addEventListener("click", async functio
     restaurantId: "water",
     restaurantName: "Huduma ya Maji UJASI",
     customerName: guestName,
-    items: [{ id: "water5", restaurantId: "water", restaurantName: "Huduma ya Maji UJASI", name: "Maji Safi (Lita 5)", price: BOTTLE_PRICE, qty: selectedQty, photo: "" }],
-    subtotal: selectedQty * BOTTLE_PRICE,
+    items: [{ id: "water5", restaurantId: "water", restaurantName: "Huduma ya Maji UJASI", name: "Maji Safi (Lita 5)", price: unitPrice, qty: selectedQty, photo: "" }],
+    subtotal: selectedQty * unitPrice,
     deliveryFee: 0,
-    total: selectedQty * BOTTLE_PRICE,
+    total: selectedQty * unitPrice,
     network: selectedNetwork,
     txnId: txnId,
     note: "Huduma ya Maji - Delivery Bure",

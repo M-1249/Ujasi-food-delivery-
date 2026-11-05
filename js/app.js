@@ -53,6 +53,9 @@ function explainUjasiError(err){
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return "Simu/kifaa chako hakina mtandao kwa sasa - washa Data au WiFi kisha jaribu tena.";
   }
+  if (code === "ujasi/txn-rejected") {
+    return "Oda haijapokelewa. Sababu zinazowezekana: (1) Namba ya Muamala hii imeshatumika kwenye oda nyingine - weka namba halisi ya SMS ya malipo yako; (2) bei au ada ya usafiri imebadilika - pakia ukurasa upya (refresh) kisha jaribu tena; (3) mgahawa haupatikani kwa sasa.";
+  }
   if (code === "auth/operation-not-allowed" || msg.indexOf("operation-not-allowed") !== -1) {
     return "Tatizo la usanidi wa mfumo (uthibitisho wa wageni haujawezeshwa) - taarifu msimamizi.";
   }

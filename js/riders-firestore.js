@@ -35,13 +35,34 @@
     }
   }
 
+  // Admin: riders wote. Rider: hati YAKE tu (rules haziruhusu rider kusoma
+  // koleksheni nzima - na pia inapunguza reads).
+  let ridersUnsub = null;
   function attachListener() {
     if (ridersListenerOn || !fbReady()) return;
     ridersListenerOn = true;
-    db.collection(RIDERS_COL).onSnapshot((snap) => {
-      ridersCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-      notify();
-    }, (err) => console.error("UJASI: riders onSnapshot error:", err));
+    auth.onAuthStateChanged(async (user) => {
+      if (ridersUnsub) { ridersUnsub(); ridersUnsub = null; }
+      ridersCache = [];
+      if (!user) { notify(); return; }
+      let role = null;
+      try {
+        const ud = await db.collection("users").doc(user.uid).get();
+        role = ud.exists ? ud.data().role : null;
+      } catch (e) { console.error("UJASI: imeshindikana kusoma cheo (riders):", e); }
+      const onErr = (err) => console.error("UJASI: riders onSnapshot error:", err);
+      if (role === "admin_layer1" || role === "super_admin") {
+        ridersUnsub = db.collection(RIDERS_COL).onSnapshot((snap) => {
+          ridersCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+          notify();
+        }, onErr);
+      } else if (role === "rider") {
+        ridersUnsub = db.collection(RIDERS_COL).doc(user.uid).onSnapshot((doc) => {
+          ridersCache = doc.exists ? [Object.assign({ id: doc.id }, doc.data())] : [];
+          notify();
+        }, onErr);
+      }
+    });
   }
 
   function watchMyRiderId() {

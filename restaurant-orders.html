@@ -115,10 +115,11 @@ function selectFilter(key){
 function nextActionButton(order){
   switch(order.status){
     case "pending_verification":
-      return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','payment_confirmed')">✔ Thibitisha Malipo</button>
-              <button class="btn btn-outline btn-sm" onclick="cancelOrder('${order.orderCode}')">✕ Kataa</button>`;
+      // Malipo yanathibitishwa na Admin wa jukwaa (pesa zinaingia Lipa Namba ya jukwaa) - mgahawa haoni oda hizi hadi zilipiwe.
+      return `<span class="badge badge-warn">Inasubiri Admin kuthibitisha malipo</span>`;
     case "payment_confirmed":
-      return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','preparing')">👨‍🍳 Anza Kuandaa</button>`;
+      return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','preparing')">👨‍🍳 Anza Kuandaa</button>
+              <button class="btn btn-outline btn-sm" onclick="cancelOrder('${order.orderCode}')">✕ Siwezi Kuandaa</button>`;
     case "preparing":
       return `<button class="btn btn-primary btn-sm" onclick="advanceOrder('${order.orderCode}','ready_for_pickup')">📦 Tayari Kuchukuliwa</button>`;
     case "ready_for_pickup":

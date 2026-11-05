@@ -156,6 +156,7 @@ function renderOrders(){
         ${o.note ? `<div class="muted" style="margin-top:4px;">📝 ${o.note}</div>` : ""}
         ${o.adminNote ? `<div class="muted" style="margin-top:4px; background:var(--primary-tint); padding:6px 8px; border-radius:6px;">💬 Ujumbe: ${o.adminNote}</div>` : ""}
         ${mapEmbed}
+        ${paymentButtons(o)}
         ${isWaterOrder(o) ? waterActionButtons(o) : ""}
         <button class="detail-link" onclick="openDetailModal('${o.orderCode}')">📋 Taarifa Kamili za Mteja/Malipo →</button>
         ${(needsRider || o.riderId) ? `
@@ -187,6 +188,68 @@ async function assignRider(code){
   renderOrders(); // onSnapshot itasasisha tena hata hivyo, hii ni haraka zaidi
 }
 
+/* ---------- Uthibitisho wa Malipo (Admin TU - kwa oda za chakula NA maji) ----------
+   Pesa zote zinaingia Lipa Namba ya jukwaa, kwa hiyo mgahawa HAWEZI kuthibitisha
+   malipo. Admin anaandika KIASI HALISI alichoona kwenye SMS/muamala; rules
+   zinakataa uthibitisho kama kiasi hakilingani na jumla ya oda (paidAmount == total). */
+function paymentButtons(o){
+  if(o.status !== "pending_verification") return "";
+  return `<div class="water-action-row">
+    <div class="muted" style="margin:6px 0 4px;">🔖 Namba ya Muamala: <b style="font-family:var(--font-mono);">${o.txnId || "—"}</b></div>
+    <button class="btn btn-primary btn-sm" onclick="confirmPayment('${o.orderCode}')">✔ Thibitisha Malipo</button>
+    <button class="btn btn-outline btn-sm" onclick="cancelWaterOrder('${o.orderCode}')">✕ Kataa</button>
+  </div>`;
+}
+
+// Kinga ya bei: rules haziwezi kupitia orodha ya bidhaa, kwa hiyo tunalinganisha
+// jumla ya oda na bei HALISI za menyu (reads chache: bidhaa za oda hii tu).
+async function expectedFoodTotal(o){
+  if(isWaterOrder(o)) return null;
+  const docs = await Promise.all(o.items.map(i =>
+    db.collection("restaurants").doc(i.restaurantId || o.restaurantId).collection("menu").doc(i.id).get()
+  ));
+  let sum = 0;
+  for(let k = 0; k < docs.length; k++){
+    if(!docs[k].exists) return { missing: true };
+    sum += Number(docs[k].data().price) * Number(o.items[k].qty);
+  }
+  return { sum: sum + Number(o.deliveryFee || 0) };
+}
+
+async function confirmPayment(code){
+  const o = getOrders().find(x => x.orderCode === code);
+  if(!o) return;
+  let warn = "";
+  try{
+    const exp = await expectedFoodTotal(o);
+    if(exp && exp.missing){
+      warn = "\n\n⚠ Baadhi ya bidhaa hazipo tena kwenye menyu - kagua oda kwa makini.";
+    } else if(exp && exp.sum !== Number(o.total)){
+      warn = `\n\n⚠ ONYO: bei za menyu zinatoa ${formatTZS(exp.sum)} lakini oda inasema ${formatTZS(o.total)}. Usithibitishe bila kuhakiki.`;
+    }
+  }catch(e){ console.warn("Hakiki ya bei imeshindikana:", e); }
+  const input = prompt(`Oda ${o.orderCode}\nJumla ya oda: ${formatTZS(o.total)}\nNamba ya Muamala: ${o.txnId}\n\nWeka KIASI HALISI ulichopokea kwenye SMS/Lipa Namba (TSh):${warn}`);
+  if(input === null) return;
+  const amount = Number(String(input).replace(/[^0-9.]/g, ""));
+  if(!amount || amount !== Number(o.total)){
+    showToast(`Kiasi (${formatTZS(amount || 0)}) hakilingani na jumla ya oda (${formatTZS(o.total)}). Oda haijathibitishwa.`, "error", 6000);
+    return;
+  }
+  try{
+    await updateOrder(code, {
+      status: "payment_confirmed",
+      paidAmount: amount,
+      verifiedBy: auth.currentUser.uid,
+      paymentConfirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast("Malipo yamethibitishwa", "success");
+    renderOrders();
+  }catch(err){
+    console.error(err);
+    showToast(explainUjasiError(err), "error");
+  }
+}
+
 /* ---------- Vitendo maalum kwa Oda za Maji (hakuna Restaurant Admin kwa hizi) ---------- */
 function isWaterOrder(o){
   return o.items.some(i => i.restaurantId === "water");
@@ -194,10 +257,7 @@ function isWaterOrder(o){
 function waterActionButtons(o){
   switch(o.status){
     case "pending_verification":
-      return `<div class="water-action-row">
-        <button class="btn btn-primary btn-sm" onclick="advanceWaterOrder('${o.orderCode}','payment_confirmed')">✔ Thibitisha Malipo (Maji)</button>
-        <button class="btn btn-outline btn-sm" onclick="cancelWaterOrder('${o.orderCode}')">✕ Kataa</button>
-      </div>`;
+      return ""; // uthibitisho wa malipo uko kwenye paymentButtons(o) - unahitaji kiasi halisi kilichopokelewa
     case "payment_confirmed":
       return `<div class="water-action-row">
         <button class="btn btn-primary btn-sm" onclick="advanceWaterOrder('${o.orderCode}','ready_for_pickup')">📦 Tayari Kusafirishwa</button>

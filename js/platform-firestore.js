@@ -111,56 +111,92 @@
     await db.collection(PROMO_COL).doc(id).update({ active: !p.active });
   };
 
-  /* ---------- reviews/{id} ---------- */
+  /* ---------- reviews/{orderCode} ----------
+     MUHIMU (kikomo cha reads): zamani ukurasa WOWOTE ulisoma reviews ZOTE
+     kila ulipofunguliwa - kadiri reviews zinavyoongezeka, reads zingeisha
+     ndani ya wiki. Sasa:
+       - ukurasa wa mgahawa: reviews 20 za karibuni za mgahawa HUO tu
+       - "Oda Zangu": reviews za mteja huyu tu (kujua ipi imeshatolewa)
+       - Super Admin: zote (ukurasa wa admin pekee unaoita getAllReviews)
+     Kitambulisho cha review = orderCode => review MOJA kwa kila oda. */
   const REVIEWS_COL = "reviews";
-  let reviewsCache = [];
-  let reviewsListenerOn = false;
-  function attachReviewsListener() {
-    if (reviewsListenerOn || !fbReady()) return;
-    reviewsListenerOn = true;
-    db.collection(REVIEWS_COL).onSnapshot((snap) => {
-      reviewsCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-      window.dispatchEvent(new CustomEvent("ujasi-reviews-updated"));
-      if (typeof window.onUjasiReviewsUpdate === "function") {
-        try { window.onUjasiReviewsUpdate(); } catch (e) { console.error(e); }
-      }
-    }, (err) => console.error("UJASI: reviews onSnapshot error:", err));
+  const reviewsByRest = {};
+  const restReviewListeners = {};
+  let allReviews = [];
+  let allReviewsListenerOn = false;
+  let myReviewedCodes = {};
+  let myReviewsWatch = false;
+
+  function notifyReviews() {
+    window.dispatchEvent(new CustomEvent("ujasi-reviews-updated"));
+    if (typeof window.onUjasiReviewsUpdate === "function") {
+      try { window.onUjasiReviewsUpdate(); } catch (e) { console.error(e); }
+    }
   }
-  window.getAllReviews = function () {
-    attachReviewsListener();
-    return reviewsCache.slice();
+  function sortNewest(list) {
+    return list.slice().sort((a, b) => {
+      const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+      const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+      return tb - ta;
+    });
+  }
+
+  window.getAllReviews = function () { // Super Admin tu
+    if (!allReviewsListenerOn && fbReady()) {
+      allReviewsListenerOn = true;
+      db.collection(REVIEWS_COL).onSnapshot((snap) => {
+        allReviews = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+        notifyReviews();
+      }, (err) => console.error("UJASI: reviews(all) onSnapshot error:", err));
+    }
+    return allReviews.slice();
   };
   window.getReviewsForRestaurant = function (restaurantId) {
-    return window.getAllReviews().filter((r) => r.restaurantId === restaurantId);
+    if (restaurantId && !restReviewListeners[restaurantId] && fbReady()) {
+      restReviewListeners[restaurantId] = true;
+      // Inahitaji composite index: restaurantId (Ascending) + createdAt (Descending).
+      db.collection(REVIEWS_COL).where("restaurantId", "==", restaurantId)
+        .orderBy("createdAt", "desc").limit(20)
+        .onSnapshot((snap) => {
+          reviewsByRest[restaurantId] = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+          notifyReviews();
+        }, (err) => console.error("UJASI: reviews(" + restaurantId + ") onSnapshot error (index inahitajika?):", err));
+    }
+    return sortNewest(reviewsByRest[restaurantId] || []);
   };
   window.hasReviewedOrder = function (orderCode) {
-    return window.getAllReviews().some((r) => r.orderCode === orderCode);
+    if (!myReviewsWatch && fbReady()) {
+      myReviewsWatch = true;
+      let unsub = null;
+      auth.onAuthStateChanged((user) => {
+        if (unsub) { unsub(); unsub = null; }
+        myReviewedCodes = {};
+        if (!user) { notifyReviews(); return; }
+        unsub = db.collection(REVIEWS_COL).where("customerUid", "==", user.uid).onSnapshot((snap) => {
+          myReviewedCodes = {};
+          snap.docs.forEach((d) => { myReviewedCodes[d.id] = true; });
+          notifyReviews();
+        }, (err) => console.error("UJASI: my reviews onSnapshot error:", err));
+      });
+    }
+    return !!myReviewedCodes[orderCode];
   };
   window.addReview = async function (review) {
     const user = auth && auth.currentUser ? auth.currentUser : null;
+    if (!user) throw new Error("Hakuna mtumiaji aliyeingia");
     const payload = Object.assign({}, review, {
-      customerUid: user ? user.uid : null,
+      customerUid: user.uid,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    const ref = await db.collection(REVIEWS_COL).add(payload);
-
-    // Sasisha wastani wa rating wa mgahawa (soma-hesabu-andika salama
-    // zaidi kupitia transaction, kuepuka mgongano wa "reads mbili
-    // zikiandikiana wakati mmoja").
-    await db.runTransaction(async (tx) => {
-      const restRef = db.collection("restaurants").doc(review.restaurantId);
-      const restDoc = await tx.get(restRef);
-      if (!restDoc.exists) return;
-      const allForRest = window.getReviewsForRestaurant(review.restaurantId).concat([review]);
-      const avg = allForRest.reduce((s, r) => s + r.rating, 0) / allForRest.length;
-      tx.update(restRef, { rating: Math.round(avg * 10) / 10, reviews: allForRest.length });
-    });
-    return Object.assign({ id: ref.id }, payload);
+    // Kitambulisho = orderCode (review moja kwa oda; rules zinakagua oda ni ya mteja na imekamilika).
+    // Wastani wa rating (restaurants/{id}.rating) HAUSASISHWI tena na mteja - rules
+    // haziruhusu mteja kuandika kwenye hati ya mgahawa. Angalia HATUA-ZA-DEPLOY.md (awamu ya 2).
+    await db.collection(REVIEWS_COL).doc(review.orderCode).set(payload);
+    return Object.assign({ id: review.orderCode }, payload);
   };
   window.deleteReview = async function (id) {
     await db.collection(REVIEWS_COL).doc(id).delete();
   };
 
   attachPromoListener();
-  attachReviewsListener();
 })();

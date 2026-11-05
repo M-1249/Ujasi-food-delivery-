@@ -97,24 +97,78 @@
     }
   }
 
+  /* ---------- Listener ya oda kulingana na CHEO (role) ----------
+     Rules za Firestore si "kichujio": query lazima iulize TU data ambayo
+     role hiyo inaruhusiwa kuona. Pia hii inalinda kikomo cha reads
+     (50,000/siku kwenye Spark): staff HAWASOMI historia yote ya oda,
+     ni siku chache za mwisho tu (default 2). Ukurasa wa ripoti unaweza
+     kuweka window.UJASI_ORDERS_WINDOW_DAYS = 7 kabla ya getOrders() ya kwanza.
+       - Admin Layer 1 / Super Admin : oda zote za siku hizo
+       - Mgahawa (umeidhinishwa)     : oda zake zilizolipiwa tu
+       - Rider (aliyeidhinishwa)     : zake + foleni ya "ready_for_pickup"
+       - Mteja/guest                 : hakuna listener hapa - anatumia
+                                       listenMyOrders()/listenToOrder() */
+  const PAID_STATUSES = ["payment_confirmed", "preparing", "ready_for_pickup", "on_the_way", "delivered"];
+
+  function windowStart() {
+    const days = Number(window.UJASI_ORDERS_WINDOW_DAYS) || 2;
+    return firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 86400000));
+  }
+
+  function handleOrdersError(err) {
+    console.error("UJASI: orders onSnapshot error:", err);
+    if (typeof showToast !== "function") return;
+    if (err && err.code === "failed-precondition") {
+      // Query inahitaji composite index - Firebase inaweka LINK ya kuiunda ndani ya err.message (angalia Console).
+      showToast("Firestore inahitaji 'index' ya oda - fungua Console ya kivinjari (Inspect) ubofye link ya kuiunda", "error", 8000);
+    } else {
+      showToast("Muunganiko wa oda za wakati halisi umeshindikana", "error");
+    }
+  }
+
   function attachListener() {
     if (listenerAttached || !firebaseReady()) return;
     listenerAttached = true;
-    ensureAuth().then(() => {
-      db.collection(ORDERS_COL).onSnapshot(
-        (snap) => {
-          cache = snap.docs
-            .map(fromDoc)
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          notifyUpdated();
-        },
-        (err) => {
-          console.error("UJASI: orders onSnapshot error:", err);
-          if (typeof showToast === "function") {
-            showToast("Muunganiko wa oda za wakati halisi umeshindikana", "error");
-          }
-        }
-      );
+    ensureAuth().then(async (user) => {
+      if (!user) return;
+      let role = null;
+      try {
+        const ud = await db.collection("users").doc(user.uid).get();
+        role = ud.exists ? ud.data().role : null;
+      } catch (e) {
+        console.error("UJASI: imeshindikana kusoma cheo (role):", e);
+      }
+
+      const col = db.collection(ORDERS_COL);
+      let queries = [];
+      if (role === "admin_layer1" || role === "super_admin") {
+        queries = [col.where("createdAt", ">=", windowStart())];
+      } else if (role === "restaurant_admin") {
+        queries = [col.where("restaurantId", "==", user.uid).where("status", "in", PAID_STATUSES).where("createdAt", ">=", windowStart())];
+      } else if (role === "rider") {
+        queries = [
+          col.where("riderId", "==", user.uid),
+          col.where("status", "==", "ready_for_pickup").where("riderId", "==", null),
+        ];
+      } else {
+        return; // mteja/guest: hana ruhusa ya kusoma oda za wengine
+      }
+
+      const parts = [];
+      const rebuild = () => {
+        const merged = {};
+        parts.forEach((list) => (list || []).forEach((o) => { merged[o.orderCode] = o; }));
+        cache = Object.keys(merged)
+          .map((k) => merged[k])
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        notifyUpdated();
+      };
+      queries.forEach((q, i) => {
+        q.onSnapshot((snap) => {
+          parts[i] = snap.docs.map(fromDoc);
+          rebuild();
+        }, handleOrdersError);
+      });
     });
   }
 
@@ -162,33 +216,38 @@
   };
 
   window.saveOrder = async function (order) {
-    // MUHIMU: HATUITI attachListener() hapa tena. saveOrder() haihitaji
-    // kusoma "cache" ya collection nzima ya orders (ni WRITE tu ya hati
-    // MOJA) - lakini awali ilikuwa ikiita attachListener() ambayo
-    // inafungua listener ya COLLECTION NZIMA ya "orders" bila "where"
-    // filter. Kwa MTEJA (si staff), Security Rules zinaikataa hiyo
-    // listener moja kwa moja (query isiyochujwa haiwezi kuthibitishwa
-    // kuwa salama kwa kila hati) - hivyo kila mteja alipokuwa akituma
-    // oda, alikuwa akipata ONYO/TOAST YA KOSA ("muunganiko wa wakati
-    // halisi umeshindikana") papo hapo, HATA KAMA oda yenyewe ilikuwa
-    // imefanikiwa kutumwa - ikionekana kama "mfumo unagoma" kumbe
-    // ilikuwa ni kosa la listener isiyohusiana kabisa na uandishi wa oda.
+    // MUHIMU: HATUITI attachListener() hapa - saveOrder() ni WRITE tu.
     const user = await ensureAuth();
     if (!user) {
-      // Tunatengeneza error yenye "code" halisi (kutoka Firebase Auth
-      // ikiwa ipo) ili ukurasa unaoita saveOrder() aweze kuonyesha
-      // ujumbe sahihi kwa explainUjasiError() - si "hakuna mtandao"
-      // kwa kila aina ya tatizo.
+      // Error yenye "code" halisi ili explainUjasiError() itoe ujumbe sahihi.
       const e = new Error("Hakuna auth - imeshindikana kutuma oda");
       e.code = (lastAuthError && lastAuthError.code) || "no-auth";
       throw e;
     }
+    // Namba ya Muamala: herufi kubwa na bila nafasi (rules zinadai muundo huu).
+    const txnId = String(order.txnId || "").trim().toUpperCase();
     const payload = Object.assign({}, order, {
+      txnId: txnId,
       customerUid: user.uid,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    await db.collection(ORDERS_COL).doc(order.orderCode).set(payload);
+    // BATCH (atomiki): oda + "kufuli" ya Namba ya Muamala (txns/{txnId}).
+    // Ikiwa namba hiyo imeshatumika kwenye oda nyingine, batch yote
+    // inakataliwa na rules - hakuna oda inayotengenezwa.
+    const batch = db.batch();
+    batch.set(db.collection(ORDERS_COL).doc(order.orderCode), payload);
+    batch.set(db.collection("txns").doc(txnId), {
+      orderCode: order.orderCode,
+      customerUid: user.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    try {
+      await batch.commit();
+    } catch (err) {
+      if (err && err.code === "permission-denied") err.code = "ujasi/txn-rejected";
+      throw err;
+    }
     return order;
   };
 

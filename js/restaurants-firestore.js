@@ -51,6 +51,7 @@
     db.collection(REST_COL).onSnapshot((snap) => {
       restaurantsCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
       restaurantsFirstSnapshotReceived = true;
+      if (myRestaurantId && menuCache[myRestaurantId]) syncFoodNames(myRestaurantId);
       notify("ujasi-restaurants-updated");
     }, (err) => {
       console.error("UJASI: restaurants onSnapshot error:", err);
@@ -70,11 +71,31 @@
     return restaurantsFirstSnapshotReceived;
   };
 
+  /* ---------- foodNames: utafutaji wa chakula BILA kusoma menyu zote ----------
+     Ukurasa wa Nyumbani zamani ulifungua listener ya menyu ya KILA mgahawa
+     (reads nyingi kwa kila mgeni, na kikomo ni 50,000/siku). Sasa majina ya
+     vyakula yanahifadhiwa kwenye hati ya mgahawa (foodNames) na mmiliki mwenyewe
+     (kila anapofungua/kubadilisha menyu), na utafutaji unatumia hiyo. */
+  function syncFoodNames(restaurantId) {
+    if (!myRestaurantId || restaurantId !== myRestaurantId) return;
+    const rest = restaurantsCache.find((r) => r.id === restaurantId);
+    if (!rest) return;
+    const names = (menuCache[restaurantId] || [])
+      .filter((m) => m.available !== false && m.name)
+      .map((m) => String(m.name))
+      .slice(0, 40);
+    const old = Array.isArray(rest.foodNames) ? rest.foodNames : [];
+    if (old.length === names.length && old.every((n, i) => n === names[i])) return; // hakuna mabadiliko - hakuna write
+    db.collection(REST_COL).doc(restaurantId).update({ foodNames: names })
+      .catch((e) => console.warn("UJASI: foodNames sync imeshindikana:", e));
+  }
+
   function attachMenuListener(restaurantId) {
     if (menuListeners[restaurantId] || !fbReady()) return;
     menuListeners[restaurantId] = true;
     db.collection(REST_COL).doc(restaurantId).collection("menu").onSnapshot((snap) => {
       menuCache[restaurantId] = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      syncFoodNames(restaurantId);
       notify("ujasi-menu-updated");
     }, (err) => console.error("UJASI: menu onSnapshot error:", err));
   }
@@ -200,7 +221,9 @@
   /* ---------- Migahawa Yote ya Jukwaa (kwa Wateja/Admin) ---------- */
   window.getAllPlatformRestaurants = function () {
     attachRestaurantsListener();
-    restaurantsCache.forEach((r) => attachMenuListener(r.id)); // kwa ajili ya utafutaji wa chakula (search) - onSnapshot moja tu kwa kila mgahawa, kisha inatoka kwenye cache
+    // MUHIMU: HATUFUNGUI tena listener ya menyu ya kila mgahawa hapa (ilikuwa
+    // inakula reads). Utafutaji wa chakula unatumia r.foodNames; menyu kamili
+    // inapakiwa tu mgeni anapofungua ukurasa wa mgahawa (findAnyRestaurant).
     return restaurantsCache
       .filter((r) => r.approved !== false)
       .map((r) => Object.assign({}, r, { foods: (menuCache[r.id] || []).filter((f) => f.available !== false) }));
