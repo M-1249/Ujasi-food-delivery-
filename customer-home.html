@@ -149,6 +149,14 @@ function renderRestaurants(){
     return;
   }
 
+  const loadErr = (typeof getRestaurantsLoadError === "function") ? getRestaurantsLoadError() : null;
+  if(loadErr){
+    document.getElementById("restCount").textContent = "—";
+    document.getElementById("restList").innerHTML = `
+      <div class="empty"><div class="ic">⚠️</div>Imeshindikana kupakia migahawa (kosa: ${loadErr}).<br>Pakia ukurasa upya. Tatizo likiendelea, mjulishe msimamizi.</div>
+    `;
+    return;
+  }
   let list = getAllPlatformRestaurants().filter(r => {
     const matchesCat = activeCategory === "Zote" || r.category === activeCategory;
     const matchesSearch = r.name.toLowerCase().includes(q) ||

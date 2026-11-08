@@ -44,6 +44,8 @@
     <h2 style="font-size:16px; margin:0;">Risiti Yako</h2>
   </div>
 
+  <div class="empty" id="receiptState" style="display:none;"></div>
+
   <div class="receipt-sheet reveal" id="receiptSheet">
     <div class="receipt-head">
       <img src="icons/icon-192.png" alt="UJASI" class="logo-mark">
@@ -92,11 +94,24 @@ function statusLabel(s){
   return map[s] || s;
 }
 
+let receiptBlocked = false, receiptSnapshot = false;
+function showReceiptMessage(icon, msg){
+  // HATUFUTI risiti (receiptSheet) - tunaficha na kuonyesha ujumbe pembeni
+  document.getElementById("receiptSheet").style.display = "none";
+  const st = document.getElementById("receiptState");
+  st.style.display = "block";
+  st.innerHTML = `<div class="ic">${icon}</div>${msg}`;
+}
 function render(order){
+  if(receiptBlocked) return;
   if(!order){
-    document.getElementById("receiptSheet").innerHTML = `<div class="empty"><div class="ic">🧾</div>${code ? "Inapakia risiti..." : "Risiti haijapatikana"}</div>`;
+    if(!code) showReceiptMessage("🧾", "Risiti haijapatikana");
+    else if(receiptSnapshot) showReceiptMessage("🧾", "Risiti haijapatikana - hakikisha namba ya oda ni sahihi.");
+    else showReceiptMessage("⏳", "Inapakia risiti...");
     return;
   }
+  document.getElementById("receiptSheet").style.display = "";
+  document.getElementById("receiptState").style.display = "none";
   document.getElementById("receiptNo").textContent = "Risiti #" + order.orderCode; // NAMBA HII HII ndiyo inayotumika kufuatilia oda (si namba tofauti/ya nasibu)
   document.getElementById("itemLines").innerHTML = order.items.map(i =>
     `<div class="r-line"><span>${i.qty}× ${i.name}</span><span>${formatTZS(i.price * i.qty)}</span></div>`
@@ -114,8 +129,9 @@ function render(order){
 }
 render(null);
 if(code){
-  listenToOrder(code, render, function(){
-    document.getElementById("receiptSheet").innerHTML = `<div class="empty"><div class="ic">🔒</div>Huna ruhusa ya kuona risiti hii.</div>`;
+  listenToOrder(code, function(o){ receiptSnapshot = true; render(o); }, function(){
+    receiptBlocked = true;
+    showReceiptMessage("🔒", "Huna ruhusa ya kuona risiti hii.");
   }); // onSnapshot ya hati MOJA (orders/{code}) - haipakui oda za wengine
 }
 </script>

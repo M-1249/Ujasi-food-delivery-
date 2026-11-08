@@ -155,6 +155,10 @@ document.getElementById("placeOrderBtn").addEventListener("click", async functio
   const addrSel = document.getElementById("addrSelect");
   if(!addrSel.value){ showToast("Chagua au ongeza anwani ya kufikisha", "error"); return; }
 
+  if(!findAnyRestaurant(cart[0].restaurantId)){
+    showToast("Taarifa za mgahawa bado zinapakia - subiri sekunde chache kisha ubonyeze tena", "error");
+    return;
+  }
   const total = renderSummary();
   const orderCode = generateOrderCode();
   saveCustomerName(guestName);
@@ -180,8 +184,8 @@ document.getElementById("placeOrderBtn").addEventListener("click", async functio
   };
 
   // MUHIMU: Hali halisi ya malipo ("paid") HAIPASWI kuandikwa na client.
-  // Uthibitisho wa mwisho unafanywa na Mgahawa/Admin baada ya kuangalia
-  // Transaction ID dhidi ya SMS/muamala halisi (angalia firestore.rules).
+  // Uthibitisho wa mwisho unafanywa na ADMIN wa jukwaa baada ya kuangalia
+  // Transaction ID na kiasi dhidi ya SMS/muamala halisi (angalia firestore.rules).
   const btn = document.getElementById("placeOrderBtn");
   btn.disabled = true;
   btn.textContent = "Inatuma...";
@@ -215,7 +219,9 @@ window.onUjasiCustomerUpdate = function(){
   const el = document.getElementById("guestName");
   if(el && !el.value){ const n = getCustomerName(); if(n) el.value = n; }
   renderAddresses();
+  renderSummary(); // MUHIMU: kikapu kinafika baada ya ukurasa kufunguka - jumla lazima isasishwe, la sivyo mteja analipa kiasi kisicho sahihi
 };
+window.onUjasiRestaurantsUpdate = renderSummary; // ada ya usafiri inategemea mgahawa - inapofika, jumla inasasishwa
 </script>
 </body>
 </html>

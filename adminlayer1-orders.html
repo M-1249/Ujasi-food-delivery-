@@ -277,7 +277,7 @@ async function advanceWaterOrder(code, status){
   }
 }
 async function cancelWaterOrder(code){
-  if(!confirm("Una uhakika unataka kughairi oda hii ya maji?")) return;
+  if(!confirm("Una uhakika unataka kukataa/kughairi oda hii?")) return;
   try{
     await updateOrderStatus(code, "cancelled");
     showToast("Oda imeghairiwa", "success");

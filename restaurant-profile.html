@@ -73,6 +73,7 @@
 <script>
 function loadProfile(){
   const p = getRestaurantProfile();
+  if(!p) return; // bado inapakia - onUjasiRestaurantsUpdate itaita tena
   document.getElementById("nameDisplay").textContent = p.name;
   document.getElementById("catDisplay").textContent = p.category;
   document.getElementById("logoInitials").textContent = (p.logo || p.name || "MW").slice(0,2).toUpperCase();

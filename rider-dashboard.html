@@ -85,6 +85,7 @@
 <script>
 function renderDashboard(){
   const profile = getRiderProfile();
+  if(!profile) return; // profaili bado haijafika kutoka Firestore - onUjasiRidersUpdate itaita tena
   document.getElementById("riderNameLabel").textContent = profile.name;
   document.getElementById("onlineToggle").checked = profile.online;
   document.getElementById("onlineStatusLabel").textContent = profile.online ? "Uko Mtandaoni — Unapokea Oda" : "Umezima — Hupokei Oda";

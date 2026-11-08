@@ -45,16 +45,23 @@
     }
   }
 
+  // Kosa la mwisho la kusoma migahawa (mf. "permission-denied") au null. Linaruhusu
+  // ukurasa wa wateja kuonyesha KOSA HALISI badala ya "Hakuna mgahawa".
+  let restaurantsLoadError = null;
+  window.getRestaurantsLoadError = function () { return restaurantsLoadError; };
+
   function attachRestaurantsListener() {
     if (restaurantsListenerOn || !fbReady()) return;
     restaurantsListenerOn = true;
     db.collection(REST_COL).onSnapshot((snap) => {
       restaurantsCache = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
       restaurantsFirstSnapshotReceived = true;
+      restaurantsLoadError = null;
       if (myRestaurantId && menuCache[myRestaurantId]) syncFoodNames(myRestaurantId);
       notify("ujasi-restaurants-updated");
     }, (err) => {
       console.error("UJASI: restaurants onSnapshot error:", err);
+      restaurantsLoadError = (err && err.code) || "unknown";
       restaurantsFirstSnapshotReceived = true; // hata ikishindikana, acha UI itoke kwenye hali ya "inapakia" milele
       notify("ujasi-restaurants-updated");
     });
@@ -90,14 +97,26 @@
       .catch((e) => console.warn("UJASI: foodNames sync imeshindikana:", e));
   }
 
+  // Hali ya menyu kwa kila mgahawa: ukurasa wa mteja unaweza kutofautisha
+  // "inapakia" (bado haijafika), "kosa" (mf. permission-denied) na "tupu" (mgahawa
+  // bado haujaweka chakula) - badala ya kuonyesha "Inapakia" milele.
+  const menuLoadErrors = {};
+  window.isMenuLoaded = function (id) { return !!menuCache[id]; };
+  window.getMenuLoadError = function (id) { return menuLoadErrors[id] || null; };
+
   function attachMenuListener(restaurantId) {
     if (menuListeners[restaurantId] || !fbReady()) return;
     menuListeners[restaurantId] = true;
     db.collection(REST_COL).doc(restaurantId).collection("menu").onSnapshot((snap) => {
       menuCache[restaurantId] = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      delete menuLoadErrors[restaurantId];
       syncFoodNames(restaurantId);
       notify("ujasi-menu-updated");
-    }, (err) => console.error("UJASI: menu onSnapshot error:", err));
+    }, (err) => {
+      console.error("UJASI: menu onSnapshot error:", err);
+      menuLoadErrors[restaurantId] = (err && err.code) || "unknown";
+      notify("ujasi-menu-updated");
+    });
   }
 
   /* ---------- Anajua "mimi ni mgahawa gani" - kwa uid ya sasa ----------

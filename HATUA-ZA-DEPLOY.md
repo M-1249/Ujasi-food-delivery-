@@ -52,3 +52,9 @@ Fungua ukurasa husika ukiwa umeingia; Console ya kivinjari itaonyesha link ya
 - App Check (reCAPTCHA) kuzuia bots; fikiria Blaze + Cloud Functions ili bei za chakula zihakikiwe na server.
 - `index.html`/`sitemap.xml` bado zinaelekeza Vercel.
 - Angalia matumizi kila siku: Firebase → Usage. Ukiwa juu ya 70% mara kwa mara, pandisha kwenda Blaze na weka budget alert.
+
+## Uchunguzi wa haraka (kwenye simu)
+Pakia `diagnose.html` kwenye mzizi wa site, kisha fungua `https://JINA-LA-SITE.netlify.app/diagnose.html`.
+Inaonyesha: je toleo jipya liko kweli kwenye server, je Firebase ni project sahihi, je Anonymous Auth imewashwa,
+migahawa mingapi ipo/inasubiri idhini/haina menyu, na cache za zamani. Bonyeza "Copy report" kunitumia matokeo.
+**Ifute baada ya kutumia.**

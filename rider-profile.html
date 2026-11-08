@@ -68,6 +68,7 @@
 <script>
 function loadProfile(){
   const p = getRiderProfile();
+  if(!p) return; // bado inapakia - onUjasiRidersUpdate itaita tena
   document.getElementById("nameDisplay").textContent = p.name;
   document.getElementById("vehicleDisplay").textContent = p.vehicle;
   document.getElementById("ratingDisplay").textContent = p.rating;

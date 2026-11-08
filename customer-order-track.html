@@ -16,6 +16,10 @@
   .pay-row .pval{ font-weight:600; }
   .note-card{ background: var(--primary-tint); border: 1px solid var(--primary); }
   .cancelled-banner{ background: var(--alert-tint); border: 1px solid var(--alert); text-align:center; padding:20px; }
+/* Hali ya "inapakia/kosa": tunaficha maudhui, HATUYAFUTI (zamani innerHTML ilifutwa na ukurasa ulikwama) */
+.container.is-loading > :not(#trackState){ display:none !important; }
+#trackState{ display:none; }
+.container.is-loading > #trackState{ display:block !important; }
 </style>
 </head>
 <body>
@@ -29,6 +33,7 @@
   </div>
 
   <div class="container reveal">
+    <div class="empty" id="trackState"></div>
     <div class="label-card" style="margin-bottom:20px;">
       <div class="label-eyebrow"><span class="dot"></span> Namba ya Oda</div>
       <div class="row between">
@@ -101,11 +106,20 @@ function statusBadgeClass(s){
   return "badge-primary";
 }
 
+let snapshotReceived = false, trackBlocked = false;
+function showTrackMessage(icon, msg){
+  document.querySelector(".container").classList.add("is-loading");
+  document.getElementById("trackState").innerHTML = `<div class="ic">${icon}</div>${msg}`;
+}
 function render(){
+  if(trackBlocked) return;
   if(!order){
-    document.querySelector(".container").innerHTML = `<div class="empty"><div class="ic">🔎</div>${code ? "Inapakia oda yako..." : "Oda haijapatikana"}</div>`;
+    if(!code) showTrackMessage("🔎", "Oda haijapatikana");
+    else if(snapshotReceived) showTrackMessage("🔎", "Oda haijapatikana - hakikisha namba ya oda ni sahihi.");
+    else showTrackMessage("⏳", "Inapakia oda yako...");
     return;
   }
+  document.querySelector(".container").classList.remove("is-loading");
 
   document.getElementById("orderCode").textContent = order.orderCode;
   document.getElementById("statusBadge").textContent = statusLabel(order.status);
@@ -231,6 +245,7 @@ function render(){
    Mgahawa/Rider/Admin Layer 1 (hata kwenye kifaa TOFAUTI kabisa)
    yanaonekana hapa papo hapo. */
 function onOrderSnapshot(fresh){
+  snapshotReceived = true;
   const statusChanged = order && fresh && fresh.status !== lastStatus;
   order = fresh;
   lastStatus = fresh ? fresh.status : null;
@@ -242,7 +257,8 @@ function manualRefresh(){
 }
 if(code){
   listenToOrder(code, onOrderSnapshot, function(){
-    document.querySelector(".container").innerHTML = `<div class="empty"><div class="ic">🔒</div>Huna ruhusa ya kuona oda hii — inaweza kuwa siyo yako, au umeingia kwa akaunti tofauti.</div>`;
+    trackBlocked = true;
+    showTrackMessage("🔒", "Huna ruhusa ya kuona oda hii — inaweza kuwa siyo yako, au umeingia kwa akaunti tofauti.");
   });
 }
 

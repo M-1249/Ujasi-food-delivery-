@@ -94,7 +94,15 @@ let rest = null;
 function renderRestaurantInfo(){
   rest = findAnyRestaurant(restId);
   if(!rest){
-    document.querySelector(".app-shell").innerHTML = `<div class="empty container"><div class="ic">😕</div>Inapakia mgahawa...</div>`;
+    // MUHIMU: HATUFUTI muundo wa ukurasa (.app-shell). Zamani innerHTML ya .app-shell
+    // ilibadilishwa hapa, na data ilipofika vipengele (restName, foodList...) havikuwepo
+    // tena - ukurasa ulibaki "Inapakia" milele. Sasa tunabadilisha maandishi tu.
+    const err = (typeof getRestaurantsLoadError === "function") ? getRestaurantsLoadError() : null;
+    let icon = "⏳", msg = "Inapakia mgahawa…", title = "Inapakia…";
+    if(err){ icon = "⚠️"; title = "Imeshindikana kupakia"; msg = `Imeshindikana kupakia mgahawa (kosa: ${err}). Pakia ukurasa upya.`; }
+    else if(isRestaurantsDataReady()){ icon = "😕"; title = "Mgahawa haujapatikana"; msg = "Mgahawa huu haupatikani kwa sasa. Rudi nyumbani uchague mwingine."; }
+    document.getElementById("restName").textContent = title;
+    document.getElementById("foodList").innerHTML = `<div class="empty"><div class="ic">${icon}</div>${msg}</div>`;
     return;
   }
   document.getElementById("restCover").src = rest.cover;
@@ -134,7 +142,21 @@ function qtyInCart(foodId){
 }
 
 function renderFoods(){
-  document.getElementById("foodList").innerHTML = rest.foods.map(f => `
+  const listEl = document.getElementById("foodList");
+  const menuErr = (typeof getMenuLoadError === "function") ? getMenuLoadError(rest.id) : null;
+  if(menuErr){
+    listEl.innerHTML = `<div class="empty"><div class="ic">⚠️</div>Imeshindikana kupakia menyu (kosa: ${menuErr}). Pakia ukurasa upya.</div>`;
+    updateFab(); return;
+  }
+  if(typeof isMenuLoaded === "function" && !isMenuLoaded(rest.id)){
+    listEl.innerHTML = `<div class="empty"><div class="ic">⏳</div>Inapakia menyu…</div>`;
+    updateFab(); return;
+  }
+  if(rest.foods.length === 0){
+    listEl.innerHTML = `<div class="empty"><div class="ic">🍽️</div>Mgahawa huu bado haujaweka chakula kwenye menyu. Rudi baadaye.</div>`;
+    updateFab(); return;
+  }
+  listEl.innerHTML = rest.foods.map(f => `
     <div class="food-row">
       <img src="${f.photo}" alt="${f.name}">
       <div style="flex:1;">

@@ -98,6 +98,7 @@ function statusBadgeClass(s){
 
 function renderDashboard(){
   const profile = getRestaurantProfile();
+  if(!profile) return; // profaili bado haijafika kutoka Firestore - onUjasiRestaurantsUpdate itaita tena
   document.getElementById("restNameLabel").textContent = profile.name;
   document.getElementById("openToggle").checked = profile.isOpen;
   document.getElementById("openStatusLabel").textContent = profile.isOpen ? "Wazi kwa Oda" : "Umefunga kwa sasa";
