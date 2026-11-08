@@ -1,4 +1,4 @@
-# Ujasi — Hatua za kuweka toleo salama (v19)
+# Ujasi — Hatua za kuweka toleo salama (v20)
 
 Lengo: wateja 100 wa chakula + 30 wa maji kwa siku, ndani ya Firebase Spark
 (reads 50,000 / writes 20,000 kwa siku), pesa na ruhusa zikiwa salama.
@@ -15,7 +15,7 @@ Lengo: wateja 100 wa chakula + 30 wa maji kwa siku, ndani ya Firebase Spark
 4. Hifadhi rules za zamani (`firestore.rules.v2-old` ni nakala).
 
 ## Mpangilio wa deploy (fanya karibu pamoja)
-1. Deploy site mpya kwenye Netlify (zip hii). Service worker = `ujasi-v19`.
+1. Deploy site mpya kwenye Netlify (zip hii). Service worker = `ujasi-v20`.
 2. Mara moja: Firestore → Rules → bandika `firestore.rules` → Publish.
    (Code mpya inahitaji rules mpya kwa `txns`; rules mpya zinahitaji code mpya.)
 
